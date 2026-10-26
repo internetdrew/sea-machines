@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type Ref,
 } from "react";
 import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
@@ -479,6 +480,8 @@ function useMarkerContext() {
 }
 
 type MapMarkerProps = {
+  /** Underlying marker for imperative positioning without React frame updates. */
+  ref?: Ref<MapLibreGL.Marker>;
   /** Longitude coordinate for marker position */
   longitude: number;
   /** Latitude coordinate for marker position */
@@ -500,6 +503,7 @@ type MapMarkerProps = {
 } & Omit<MarkerOptions, "element">;
 
 function MapMarker({
+  ref,
   longitude,
   latitude,
   children,
@@ -574,6 +578,8 @@ function MapMarker({
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useImperativeHandle(ref, () => marker, [marker]);
 
   useEffect(() => {
     if (!map) return;
@@ -743,6 +749,8 @@ function MarkerPopup({
 }
 
 type MarkerTooltipProps = {
+  /** Underlying tooltip for synchronizing its anchor with an animated marker. */
+  ref?: Ref<MapLibreGL.Popup>;
   /** Tooltip content */
   children: ReactNode;
   /** Additional CSS classes for the tooltip container */
@@ -750,6 +758,7 @@ type MarkerTooltipProps = {
 } & Omit<PopupOptions, "className" | "closeButton" | "closeOnClick">;
 
 function MarkerTooltip({
+  ref,
   children,
   className,
   ...popupOptions
@@ -770,6 +779,8 @@ function MarkerTooltip({
     return tooltipInstance;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useImperativeHandle(ref, () => tooltip, [tooltip]);
 
   useEffect(() => {
     if (!map) return;

@@ -1,35 +1,33 @@
-# React + TypeScript + Vite
+# Sea Machine
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A React/Vite prototype for a simulated STORMRUNNER vessel off Long Branch, New Jersey. Includes vessel details, playback controls, camera following, range rings, a waypoint, and a recorded voyage trail.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node.js 24 for the TypeScript-based tests.
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev
+npm test
+npm run build
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Movement
+
+- `src/lib/vessel/navigation.ts` defines the starting position, heading, waypoint distance, and range-ring distances.
+- `src/lib/vessel/simulation.ts` owns one animation clock, voyage history, and playback commands. It suspends scheduling while paused, hidden, or at the waypoint.
+- `src/lib/vessel/use-vessel-simulation.ts` connects page visibility and throttled React snapshots to the simulation.
+- `src/components/vessel/vessel-layer.tsx` owns the mapcn boat marker, tooltip, and popup.
+- `src/components/vessel/renderer.ts` moves the marker, rings, camera, and native MapLibre route/trail layers from the same frame. History updates only when a track sample is added.
+
+Playback starts paused at 12 knots and 10× simulated time. The voyage ends at the waypoint. Range rings fade together when toggled.
+
+## Map components
+
+`src/components/ui/map.tsx` is the installed mapcn component library. Local additions expose marker and tooltip refs for imperative animation; mapcn retains ownership of their content and lifecycle.
+
+The map uses CARTO basemap tiles and the MapLibre worker configured by mapcn, so those resources require network access.
+
+Tests cover simulation timing, synchronization, visibility, cleanup, and native line styles using a mocked map. They do not replace browser verification of WebGL rendering, popup interactions, or the ring fade.
