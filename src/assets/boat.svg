@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220" fill="none">
+  <title>Sea Machine boat, viewed from above</title>
+  <defs>
+    <linearGradient id="hull" x1="10" y1="110" x2="90" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101b22"/><stop offset=".48" stop-color="#34434c"/><stop offset="1" stop-color="#101b22"/>
+    </linearGradient>
+    <linearGradient id="deck" x1="30" y1="20" x2="70" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53616a"/><stop offset="1" stop-color="#202d35"/>
+    </linearGradient>
+  </defs>
+  <!-- Broad, clipped bow with faceted shoulders. Bow points north. -->
+  <path d="M32 6Q50 3 68 6L82 29 89 65 94 177Q94 196 83 202H17Q6 196 6 177L11 65 18 29Z" fill="url(#hull)" stroke="#090f14" stroke-width="3"/>
+  <path d="M34 14Q50 11 66 14L74 34 80 69 85 178Q85 187 79 190H21Q15 187 15 178L20 69 26 34Z" stroke="#63717a" stroke-width="1.5"/>
+  <path d="M35 21H65L72 46 77 80V178H23V80L28 46Z" fill="url(#deck)" stroke="#0c161d" stroke-width="2"/>
+  <!-- Transverse rubber bow tube and angular foredeck panels. -->
+  <path d="M32 6Q50 3 68 6L66 17Q50 14 34 17Z" fill="#4b5860" stroke="#15212a" stroke-width="1.5"/>
+  <path d="M18 29 32 6 34 17 28 46 20 69 11 65Z" fill="#202e37" stroke="#101a22"/>
+  <path d="M68 6 82 29 89 65 80 69 72 46 66 17Z" fill="#17232c" stroke="#101a22"/>
+  <path d="M35 21H65L69 43H31Z" fill="#68747a" stroke="#18252e" stroke-width="1.5"/>
+  <rect x="42" y="24" width="16" height="17" rx="1.5" fill="#899398" stroke="#26343d" stroke-width="1.5"/>
+  <path d="M45 27H55V37H45Z" fill="#111d25" stroke="#4c5b64"/>
+  <path d="M45 28H55" stroke="#a3acae" stroke-width="1.5"/>
+  <path d="M31 46H69L70 57H30Z" fill="#202e36" stroke="#111c24"/>
+  <path d="M22 30 18 46M78 30 82 46" stroke="#738087" stroke-width="2" stroke-linecap="round"/>
+  <path d="M33 60H67V116H33Z" fill="#25353f" stroke="#111d25" stroke-width="2"/>
+  <path d="M35 66H65M35 73H65M35 80H65M35 87H65M35 94H65M35 101H65M35 108H65" stroke="#61717b" stroke-width="3"/>
+  <path d="M31 120H69L72 147H28Z" fill="#344650" stroke="#111b22" stroke-width="2"/>
+  <rect x="38" y="125" width="24" height="15" rx="1" fill="#d2d7d5" stroke="#18252e" stroke-width="2"/>
+  <path d="M27 150H73V179H27Z" fill="#101b22" stroke="#66757d"/>
+  <path d="M31 154H43V167H31ZM57 154H69V167H57Z" fill="#394d59" stroke="#080f14" stroke-width="2"/>
+  <path d="M24 176H76M29 148V187M71 148V187" stroke="#9aa5a7" stroke-width="2"/>
+  <path d="M50 156V192M38 171H62" stroke="#0a1117" stroke-width="5"/>
+  <circle cx="50" cy="156" r="3" fill="#d4a45d" stroke="#141d23"/>
+  <rect x="24" y="193" width="20" height="20" rx="5" fill="#111c25" stroke="#52616c" stroke-width="1.5"/>
+  <rect x="56" y="193" width="20" height="20" rx="5" fill="#111c25" stroke="#52616c" stroke-width="1.5"/>
+  <path d="M27 200H41M59 200H73" stroke="#687783"/>
+  <circle cx="24" cy="170" r="2.5" fill="#d45e5e"/>
+  <circle cx="76" cy="170" r="2.5" fill="#5ab5a7"/>
+  <path d="M10 83 16 84M8 121 15 122M7 159 15 159M84 84 90 83M85 122 92 121M85 159 93 159" stroke="#71808a" stroke-width="2"/>
+</svg>
