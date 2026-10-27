@@ -7,7 +7,7 @@ import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec';
 import * as navigation from '../src/lib/vessel/navigation.ts';
 import { createVesselSimulation } from '../src/lib/vessel/simulation.ts';
 
-test('boat, rings, route, trail, and camera render one authoritative frame', async () => {
+test('boat, rings, trail, and camera render one authoritative frame without a default route', async () => {
   const elements = [], markers = [], listeners = new Map(), sources = new Map(), layers = new Map();
   class Element {
     style = {};
@@ -73,10 +73,10 @@ test('boat, rings, route, trail, and camera render one authoritative frame', asy
   const renderer = exports.createVesselRenderer(map, { Marker }, simulation,
     { marker: vesselMarker, tooltip },
     { follow: true, showRangeRings: true }, () => pans++);
-  const route = [...layers.values()].find(layer => layer.id.endsWith('-route'));
-  const live = sources.get(route.source);
+  assert.equal([...layers.values()].some(layer => layer.id.endsWith('-route')), false, 'no default waypoint route');
+  const tail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
+  const live = sources.get(tail.source);
   const history = [...sources.values()].find(source => source !== live);
-  assert.deepEqual(Array.from(route.paint['line-dasharray']), [5, 5]);
   assert.equal(elements.some(element => element.tag === 'line' || element.tag === 'polyline'), false, 'no SVG route or trail');
   const initialCameraWrites = cameraWrites;
   renderer.setOptions({ follow: true, showRangeRings: true });
@@ -103,16 +103,13 @@ test('boat, rings, route, trail, and camera render one authoritative frame', asy
   assert.equal(tooltip.position, simulation.getFrame().position, 'open mapcn tooltip follows the live marker');
   assert.equal(markers[1].position, simulation.getFrame().position);
   assert.equal(camera, simulation.getFrame().position);
-  assert.deepEqual(live.data.features[0].geometry.coordinates[0], navigation.WAYPOINT, 'dash origin stays fixed');
-  assert.deepEqual(live.data.features[0].geometry.coordinates[1], simulation.getFrame().position, 'remaining route uses live frame');
-  assert.deepEqual(live.data.features[1].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');
+  assert.deepEqual(live.data.features[0].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');
   for (let i = 0; i < 599; i++) step();
   assert.ok(snapshots <= 40);
   assert.ok(history.data.geometry.coordinates.length > 2, 'sampled track is a native geographic line');
   assert.ok(history.writes < 40, 'history is not rebuilt every frame');
-  assert.deepEqual(live.data.features[0].geometry.coordinates[0], navigation.WAYPOINT, 'dash origin remains fixed throughout travel');
   assert.deepEqual(live.data.features[0].geometry.coordinates[1], simulation.getFrame().position);
-  assert.equal(live.data.features.length, 2, 'per-frame source contains only two small segments');
+  assert.equal(live.data.features.length, 1, 'per-frame source contains only the trail tip');
   const pendingBefore = [...scheduled.keys()];
   renderer.setOptions({ follow: false, showRangeRings: false });
   assert.deepEqual([...scheduled.keys()], pendingBefore, 'display toggles do not restart simulation');
@@ -152,9 +149,9 @@ test('boat, rings, route, trail, and camera render one authoritative frame', asy
   step();
   const replacement = exports.createVesselRenderer(map, { Marker }, simulation,
     { marker: vesselMarker, tooltip }, { follow: false, showRangeRings: true }, () => pans++);
-  assert.equal(layers.size, 3, 'line layers recreated after a style swap');
-  const replacementRoute = [...layers.values()].find(layer => layer.id.endsWith('-route'));
-  const replacementLive = sources.get(replacementRoute.source);
+  assert.equal(layers.size, 2, 'trail layers recreated after a style swap');
+  const replacementTail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
+  const replacementLive = sources.get(replacementTail.source);
   assert.deepEqual(replacementLive.data.features[0].geometry.coordinates[1], simulation.getFrame().position, 'restores current position, not initial position');
   replacement.destroy();
   assert.equal(layers.size, 0);

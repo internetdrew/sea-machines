@@ -1,6 +1,6 @@
 import type * as MapLibre from 'maplibre-gl';
 import type { FeatureCollection, LineString } from 'geojson';
-import { INITIAL_CENTER, RANGE_DISTANCES, WAYPOINT } from '@/lib/vessel/navigation';
+import { INITIAL_CENTER, RANGE_DISTANCES } from '@/lib/vessel/navigation';
 import type { VesselFrame, VesselSimulation } from '@/lib/vessel/simulation';
 
 export type VesselDisplayOptions = { follow: boolean; showRangeRings: boolean };
@@ -51,13 +51,11 @@ export function createVesselRenderer(
   const prefix = `vessel-lines-${++rendererSequence}`;
   const liveSourceId = `${prefix}-live`;
   const historySourceId = `${prefix}-history`;
-  const routeLayerId = `${prefix}-route`;
   const tailLayerId = `${prefix}-tail`;
   const historyLayerId = `${prefix}-history-line`;
   const liveData: FeatureCollection<LineString> = {
     type: 'FeatureCollection',
     features: [
-      { type: 'Feature', properties: { kind: 'route' }, geometry: { type: 'LineString', coordinates: [WAYPOINT, INITIAL_CENTER] } },
       { type: 'Feature', properties: { kind: 'tail' }, geometry: { type: 'LineString', coordinates: [INITIAL_CENTER, INITIAL_CENTER] } },
     ],
   };
@@ -75,12 +73,6 @@ export function createVesselRenderer(
     filter: ['==', ['get', 'kind'], 'tail'],
     layout: { 'line-cap': 'butt', 'line-join': 'round' },
     paint: { 'line-color': '#78999e', 'line-width': 2, 'line-opacity': 0.5 },
-  });
-  map.addLayer({
-    id: routeLayerId, type: 'line', source: liveSourceId,
-    filter: ['==', ['get', 'kind'], 'route'],
-    layout: { 'line-cap': 'butt', 'line-join': 'round' },
-    paint: { 'line-color': '#579b9c', 'line-width': 1.5, 'line-opacity': 0.65, 'line-dasharray': [5, 5] },
   });
   const liveSource = map.getSource<MapLibre.GeoJSONSource>(liveSourceId)!;
   const historySource = map.getSource<MapLibre.GeoJSONSource>(historySourceId)!;
@@ -128,11 +120,8 @@ export function createVesselRenderer(
         pixelsPerNm = scale;
       }
       if (frame !== previousFrame) {
-        // Keep the first route coordinate fixed at the waypoint: dash phase
-        // stays anchored there as only the boat end of the line changes.
-        liveData.features[0].geometry.coordinates = [WAYPOINT, frame.position];
-        liveData.features[1].geometry.coordinates = [frame.track[frame.track.length - 1], frame.position];
-        // Only two two-point segments enter the worker on each simulation frame.
+        liveData.features[0].geometry.coordinates = [frame.track[frame.track.length - 1], frame.position];
+        // Only the two-point trail tip enters the worker each simulation frame.
         updateSource(liveSource, liveData);
         if (frame.track !== previousTrack) {
           updateSource(historySource, {
@@ -173,7 +162,7 @@ export function createVesselRenderer(
       map.off('resize', drawOnCameraChange);
       map.off('dragstart', handlePan);
       rings.remove();
-      for (const id of [routeLayerId, tailLayerId, historyLayerId]) {
+      for (const id of [tailLayerId, historyLayerId]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       for (const id of [liveSourceId, historySourceId]) {
