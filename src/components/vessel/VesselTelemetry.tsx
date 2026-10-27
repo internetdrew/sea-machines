@@ -14,7 +14,7 @@ export function VesselTelemetry({ snapshot, waypointLabel = 'Next waypoint', spe
       <dt className='text-muted-foreground'>{speedLabel}</dt>
       <dd>{snapshot.speed} kn</dd>
       <dt className='text-muted-foreground'>{waypointLabel}</dt>
-      <dd>{snapshot.remaining.toFixed(2)} nm</dd>
+      <dd>{snapshot.nextWaypoint ? `${snapshot.remaining.toFixed(2)} nm` : '—'}</dd>
       <dt className='text-muted-foreground'>Latitude</dt>
       <dd>{formatCoordinate(snapshot.position[1], 'N', 'S')}</dd>
       <dt className='text-muted-foreground'>Longitude</dt>

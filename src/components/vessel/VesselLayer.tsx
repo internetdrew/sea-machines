@@ -6,6 +6,7 @@ import { Popover } from '@base-ui/react/popover';
 import { X } from 'lucide-react';
 import { VesselFuel } from './VesselFuel';
 import { VesselTelemetry } from './VesselTelemetry';
+import { ActiveMissionLayer } from './ActiveMissionLayer';
 import { TextSwap } from '@/components/ui/text-swap';
 import type { Marker, Popup } from 'maplibre-gl';
 import {
@@ -20,7 +21,7 @@ import { createVesselRenderer } from './renderer';
 import type { VesselDisplayOptions } from './renderer';
 import { Drawer } from '@base-ui/react/drawer';
 import type { MissionDrawerPayload } from './MissionDrawer';
-import { getVesselActivity } from '@/lib/vessel/vessel';
+import { getMissionPhaseLabel, getVesselActivity, isMissionInProgress } from '@/lib/vessel/vessel';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 type Props = VesselDisplayOptions & {
@@ -86,6 +87,7 @@ export function VesselLayer({
         setPopoverOpen(open);
       }}
     >
+      <ActiveMissionLayer vesselId={vessel.id} frame={snapshot} />
       <MapMarker
         ref={marker}
         {...INITIAL_POSITION}
@@ -134,7 +136,7 @@ export function VesselLayer({
               </Popover.Title>
 
               <Popover.Description className='text-xs text-muted-foreground'>
-                {vessel.name} · Simulated
+                {vessel.name}
               </Popover.Description>
 
               <div className='flex text-[11px] items-center gap-2 mt-2 select-none'>
@@ -166,18 +168,22 @@ export function VesselLayer({
               </div>
 
               <VesselTelemetry snapshot={snapshot} />
+              {snapshot.mission && getMissionPhaseLabel(snapshot) && <p className='mt-2 text-xs text-muted-foreground'>
+                {getMissionPhaseLabel(snapshot)}
+              </p>}
               <VesselFuel tanks={vessel.fuelTanks} />
 
               <Drawer.Trigger
                 handle={missionDrawer}
                 payload={{ vesselId: vessel.id, returnFocus: markerButton }}
                 onClick={() => {
+                  if (snapshot.phase === 'complete' || snapshot.phase === 'aborted') simulation.clearFinishedMission();
                   openingDrawer.current = true;
                   setPopoverOpen(false);
                 }}
-                className='flex text-sm font-medium items-center cursor-pointer justify-center mt-4 gap-1 bg-black text-white w-full py-1.5 rounded-md'
+                className='flex text-sm font-medium items-center cursor-pointer justify-center mt-4 gap-1 bg-black text-white w-full py-1.5 rounded-md disabled:cursor-default disabled:opacity-50'
               >
-                Plan a mission
+                {isMissionInProgress(snapshot) ? 'View mission' : 'Plan a mission'}
               </Drawer.Trigger>
             </Popover.Popup>
           </Popover.Positioner>

@@ -26,13 +26,14 @@ function App() {
     <main className='relative h-dvh w-full [--map-edge-inset:1rem]' aria-label='Interactive map'>
       <Map center={INITIAL_CENTER} zoom={12.5} theme='dark'>
         {showSeamarks && <SeamarkLayer />}
-        <VesselLayer
-          vessel={vessels[0]}
+        {vessels.map((vessel, index) => <VesselLayer
+          key={vessel.id}
+          vessel={vessel}
           missionDrawer={missionDrawer}
-          follow={follow}
+          follow={index === 0 && follow}
           showRangeRings={showRangeRings}
           onPan={stopFollowing}
-        />
+        />)}
         <div className='map-toolbar absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen />
           <MapSettings
@@ -42,7 +43,7 @@ function App() {
             onRangeRingsChange={setShowRangeRings}
           />
         </div>
-        <MissionDrawer handle={missionDrawer} vessels={vessels} />
+        <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} />
       </Map>
     </main>
   );
