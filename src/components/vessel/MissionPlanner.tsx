@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useId,
@@ -8,6 +9,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@base-ui/react/button';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Drawer } from '@base-ui/react/drawer';
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
@@ -63,14 +65,27 @@ export function MissionPlanner({
   onDraftChange,
   isOpen,
   onSave,
+  onCancel,
 }: {
   vessel: Vessel;
   draft: MissionDraft;
   onDraftChange: (draft: MissionDraft) => void;
   isOpen: boolean;
   onSave: () => void;
+  onCancel: () => void;
 }) {
   const { map } = useMap();
+  const attachScrollArea = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return;
+    const alignPadding = () => {
+      const gutter = (element.offsetWidth - element.clientWidth) / 2;
+      element.style.setProperty('--drawer-scrollbar-inset', `${gutter}px`);
+    };
+    alignPadding();
+    const observer = new ResizeObserver(alignPadding);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const snapshot = useSyncExternalStore(
     vessel.simulation.subscribe,
     vessel.simulation.getSnapshot,
@@ -79,6 +94,7 @@ export function MissionPlanner({
   const speedErrorId = useId();
   const typeLabelId = useId();
   const [editing, setEditing] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [step, setStep] = useState<'type' | 'route' | 'speeds' | 'review'>(
     'type',
   );
@@ -166,6 +182,12 @@ export function MissionPlanner({
     setGridStart(null);
     setStep('route');
     setEditing(draft.type === 'waypoint' || draft.grid.corners.length === 0);
+  };
+  const discardDraft = () => {
+    setDiscardOpen(false);
+    setEditing(false);
+    setGridStart(null);
+    onCancel();
   };
   const routeReady = hasRoute && (draft.type !== 'grid' || !gridPlan.error);
 
@@ -262,7 +284,7 @@ export function MissionPlanner({
         </div>
       </header>
 
-      <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6'>
+      <div ref={attachScrollArea} className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] pb-6 [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges]'>
         <section aria-label='Vessel telemetry' className='border-t'>
           <VesselTelemetry
             snapshot={snapshot}
@@ -516,10 +538,11 @@ export function MissionPlanner({
       </div>
 
       <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+        <div className='mb-2 flex items-center justify-between gap-3'>
         {step !== 'type' && (
           <Button
             type='button'
-            className='mb-2 py-2.5 w-full cursor-pointer rounded-md text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
+            className='min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
             onClick={() => {
               if (step === 'speeds') editRoute();
               else {
@@ -536,6 +559,15 @@ export function MissionPlanner({
                 : 'Back to mission type'}
           </Button>
         )}
+        <Button
+          type='button'
+          className='ml-auto min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
+          onClick={() => {
+            if (draft.waypoints.length || draft.grid.corners.length || gridStart) setDiscardOpen(true);
+            else discardDraft();
+          }}
+        >Cancel planning</Button>
+        </div>
         <Button
           type='button'
           disabled={
@@ -576,6 +608,21 @@ export function MissionPlanner({
           </p>
         )}
       </footer>
+      <AlertDialog.Root open={discardOpen} onOpenChange={setDiscardOpen}>
+        <AlertDialog.Portal container={map?.getContainer()}>
+          <AlertDialog.Backdrop className='fixed inset-0 z-80 bg-black/30' />
+          <AlertDialog.Viewport className='fixed inset-0 z-90 flex items-center justify-center p-4'>
+            <AlertDialog.Popup finalFocus={isOpen} className='w-full max-w-sm rounded-2xl border bg-background p-6 text-foreground shadow-xl outline-none'>
+              <AlertDialog.Title className='text-base font-medium'>Discard this mission draft?</AlertDialog.Title>
+              <AlertDialog.Description className='mt-2 text-sm leading-relaxed text-muted-foreground'>Your planned route and speed settings will be removed.</AlertDialog.Description>
+              <div className='mt-6 flex justify-end gap-2'>
+                <AlertDialog.Close render={<Button />} className={secondaryButton}>Keep planning</AlertDialog.Close>
+                <Button onClick={discardDraft} className='min-h-9 cursor-pointer rounded-md bg-destructive px-3 text-xs font-medium text-white focus-visible:outline-2 focus-visible:outline-ring'>Discard draft</Button>
+              </div>
+            </AlertDialog.Popup>
+          </AlertDialog.Viewport>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </>
   );
 }

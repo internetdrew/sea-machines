@@ -56,6 +56,14 @@ export function MissionDrawer({
                       onDraftChange={draft => setDrafts(current => ({ ...current, [vessel.id]: draft }))}
                       isOpen={open}
                       onSave={() => handle.close()}
+                      onCancel={() => {
+                        setDrafts(current => {
+                          const next = { ...current };
+                          delete next[vessel.id];
+                          return next;
+                        });
+                        handle.close();
+                      }}
                     />
                   )}
                 </Drawer.Content>
