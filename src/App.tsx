@@ -5,7 +5,11 @@ import {
   MarkerContent,
   MarkerTooltip,
 } from '@/components/ui/map';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Drawer } from '@base-ui/react/drawer';
+import { MissionDrawer } from '@/components/vessel/MissionDrawer';
+import type { MissionDrawerPayload } from '@/components/vessel/MissionDrawer';
+import { DEMO_VESSEL } from '@/lib/vessel/vessel';
 import { MapSettings } from '@/components/MapSettings';
 import { SeamarkLayer } from '@/components/vessel/SeamarkLayer';
 import { VesselLayer } from '@/components/vessel/VesselLayer';
@@ -19,6 +23,10 @@ import {
 
 function App() {
   const { simulation, snapshot } = useVesselSimulation();
+  const vessels = useMemo(() => [{ ...DEMO_VESSEL, simulation }], [simulation]);
+  const [missionDrawer] = useState(() =>
+    Drawer.createHandle<MissionDrawerPayload>(),
+  );
   const { heading, arrived, playing, speed, multiplier } = snapshot;
   const [showRangeRings, setShowRangeRings] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
@@ -28,11 +36,12 @@ function App() {
   const stopFollowing = useCallback(() => setFollow(false), []);
   const [waypointLongitude, waypointLatitude] = WAYPOINT;
   return (
-    <main className='relative h-dvh w-full' aria-label='Interactive map'>
+    <main className='relative h-dvh w-full [--map-edge-inset:1rem]' aria-label='Interactive map'>
       <Map center={INITIAL_CENTER} zoom={12.5} theme='dark'>
         {showSeamarks && <SeamarkLayer />}
         <VesselLayer
-          simulation={simulation}
+          vessel={vessels[0]}
+          missionDrawer={missionDrawer}
           follow={follow}
           showRangeRings={showRangeRings}
           onPan={stopFollowing}
@@ -54,7 +63,7 @@ function App() {
             Demo waypoint · {ROUTE_DISTANCE_NM} nm · bearing {INITIAL_HEADING}°
           </MarkerTooltip>
         </MapMarker>
-        <div className='absolute top-2 right-2 z-10 flex flex-col items-end gap-1.5'>
+        <div className='map-toolbar absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen />
           <MapSettings
             showSeamarks={showSeamarks}
@@ -63,6 +72,7 @@ function App() {
             onRangeRingsChange={setShowRangeRings}
           />
         </div>
+        <MissionDrawer handle={missionDrawer} vessels={vessels} />
       </Map>
       <div className='absolute top-4 left-4 rounded-lg border bg-background/95 px-4 py-3 shadow-sm'>
         <div className='flex items-center justify-between gap-8'>

@@ -1,11 +1,7 @@
 import { useId } from 'react';
 import { Progress } from '@base-ui/react/progress';
 
-export type FuelTank = {
-  name: string;
-  remainingLiters: number;
-  capacityLiters: number;
-};
+import type { FuelTank } from '@/lib/vessel/vessel';
 
 const LOW_THRESHOLD = 30;
 const CRITICAL_THRESHOLD = 15;
