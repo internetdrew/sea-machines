@@ -237,7 +237,12 @@ export function MissionPlanner({
           id={`mission-area-${vessel.id}`}
           data={boundary}
           fillPaint={{ 'fill-color': '#14b8a6', 'fill-opacity': 0.04 }}
-          linePaint={{ 'line-color': '#5ea8a3', 'line-width': 1, 'line-opacity': 0.5, 'line-dasharray': [4, 4] }}
+          linePaint={{
+            'line-color': '#5ea8a3',
+            'line-width': 1,
+            'line-opacity': 0.5,
+            'line-dasharray': [4, 4],
+          }}
         />
       )}
       {isOpen && draft.type === 'grid' && hasRoute && (
@@ -324,7 +329,7 @@ export function MissionPlanner({
 
       <div
         ref={attachScrollArea}
-        className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] pb-6 [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges]'
+        className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] pb-6 scrollbar-thin scrollbar-gutter-both'
       >
         <section aria-label='Vessel telemetry' className='border-t'>
           <VesselTelemetry
