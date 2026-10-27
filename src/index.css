@@ -139,6 +139,9 @@
 }
 
 @layer base {
+  .maplibregl-map {
+    @apply font-sans!;
+  }
   .maplibregl-popup-content {
     @apply bg-transparent! shadow-none! p-0! rounded-none!;
   }
@@ -177,4 +180,35 @@
   html {
     @apply font-sans;
   }
+}
+
+.mission-drawer-popup {
+  transform: translateX(var(--drawer-swipe-movement-x, 0px));
+  transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1);
+  touch-action: pan-y;
+}
+
+.mission-drawer-popup[data-starting-style],
+.mission-drawer-popup[data-ending-style] {
+  transform: translateX(calc(100% + 2px));
+}
+
+.mission-drawer-popup[data-ending-style][data-swipe-dismiss] {
+  transition-duration: calc(var(--drawer-swipe-strength, 1) * 350ms);
+}
+
+.mission-drawer-popup[data-swiping] {
+  transition-duration: 0ms;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-drawer-popup {
+    transition-duration: 0ms !important;
+  }
+}
+
+/* MapLibre adds a 10px margin to the attribution control itself. */
+.maplibregl-map .maplibregl-ctrl-bottom-right {
+  bottom: calc(var(--map-edge-inset, 1rem) - 10px);
 }
