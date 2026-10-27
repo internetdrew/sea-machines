@@ -1,4 +1,5 @@
 import type { Coordinate } from './navigation';
+import { bearingBetween } from './navigation.ts';
 
 export type MissionType = 'waypoint' | 'grid';
 export type GridDraft = {
@@ -39,13 +40,8 @@ export function distanceNm(from: Coordinate, to: Coordinate) {
 
 /** A direction cue at the midpoint of a route leg, with a north-based bearing. */
 export function routeDirection(from: Coordinate, to: Coordinate) {
-  const rad = Math.PI / 180;
   const deltaLongitude = ((to[0] - from[0] + 540) % 360) - 180;
-  const latitude = from[1] * rad, targetLatitude = to[1] * rad;
-  const heading = (Math.atan2(
-    Math.sin(deltaLongitude * rad) * Math.cos(targetLatitude),
-    Math.cos(latitude) * Math.sin(targetLatitude) - Math.sin(latitude) * Math.cos(targetLatitude) * Math.cos(deltaLongitude * rad),
-  ) / rad + 360) % 360;
+  const heading = bearingBetween(from, to);
   const coordinate: Coordinate = [
     ((from[0] + deltaLongitude / 2 + 540) % 360) - 180,
     (from[1] + to[1]) / 2,
@@ -132,4 +128,35 @@ export function missionSpeedError(draft: MissionDraft): string | null {
 
 export function canReviewMission(draft: MissionDraft) {
   return !missionSpeedError(draft) && missionCoordinates(draft).length > 1 && missionDistance(draft) > 0;
+}
+
+export type DeployedMission = Readonly<{
+  type: MissionType;
+  origin: Coordinate;
+  targets: Coordinate[];
+  coordinates: Coordinate[];
+  boundary: Coordinate[];
+  speed: number;
+  turnSpeed: number;
+}>;
+
+/** Snapshot a validated plan, using the live vessel position for its transit leg. */
+export function createDeployment(draft: MissionDraft, position: Coordinate): DeployedMission | null {
+  if (missionSpeedError(draft) || !position.every(Number.isFinite) || Math.abs(position[1]) > 85) return null;
+  const grid = draft.type === 'grid' ? buildGridPlan({ ...draft.grid, origin: [...position] }) : null;
+  if (grid?.error) return null;
+  const planned = grid ? grid.route : draft.waypoints;
+  const targets: Coordinate[] = [];
+  for (const point of planned) {
+    if (!point.every(Number.isFinite) || Math.abs(point[1]) > 85) return null;
+    if (!targets.length || distanceNm(targets.at(-1)!, point) > 1e-9) targets.push([...point]);
+  }
+  const origin: Coordinate = [...position];
+  const coordinates = [origin, ...targets];
+  if (!targets.length || !coordinates.some((point, i) => i > 0 && distanceNm(coordinates[i - 1], point) > 1e-9)) return null;
+  return {
+    type: draft.type, origin, targets, coordinates,
+    boundary: grid ? grid.boundary.map(point => [...point]) : [],
+    speed: draft.speed!, turnSpeed: draft.turnSpeed!,
+  };
 }

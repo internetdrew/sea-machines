@@ -65,14 +65,14 @@ export function MissionPlanner({
   draft,
   onDraftChange,
   isOpen,
-  onSave,
+  onDeploy,
   onCancel,
 }: {
   vessel: Vessel;
   draft: MissionDraft;
   onDraftChange: (draft: MissionDraft) => void;
   isOpen: boolean;
-  onSave: () => void;
+  onDeploy: (draft: MissionDraft) => boolean;
   onCancel: () => void;
 }) {
   const { map } = useMap();
@@ -96,6 +96,7 @@ export function MissionPlanner({
   const typeLabelId = useId();
   const [editing, setEditing] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [step, setStep] = useState<'type' | 'route' | 'speeds' | 'review'>(
     'type',
   );
@@ -321,9 +322,6 @@ export function MissionPlanner({
           >
             {status.label}
           </span>
-          {draft.saved && (
-            <span className='text-muted-foreground'>Draft saved</span>
-          )}
         </div>
       </header>
 
@@ -610,6 +608,7 @@ export function MissionPlanner({
       </div>
 
       <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+        {deploymentError && <p role='alert' className='mb-2 text-xs text-destructive'>{deploymentError}</p>}
         {(step !== 'type' || hasPlannedPoints) && (
           <div className='mb-2 flex items-center justify-between gap-3'>
             {step !== 'type' && (
@@ -658,8 +657,7 @@ export function MissionPlanner({
             setEditing(false);
             if (step === 'route') setStep('speeds');
             else if (reviewing) {
-              onDraftChange({ ...draft, saved: true });
-              onSave();
+              if (!onDeploy(draft)) setDeploymentError('Unable to deploy. Check the route and speeds, and make sure this vessel has no mission in progress.');
             } else setStep('review');
           }}
         >

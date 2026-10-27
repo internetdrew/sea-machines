@@ -6,6 +6,7 @@ import ts from 'typescript';
 import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec';
 import * as navigation from '../src/lib/vessel/navigation.ts';
 import { createVesselSimulation } from '../src/lib/vessel/simulation.ts';
+import { createMissionDraft } from '../src/lib/vessel/mission.ts';
 
 test('boat, rings, trail, and camera render one authoritative frame without a default route', async () => {
   const elements = [], markers = [], listeners = new Map(), sources = new Map(), layers = new Map();
@@ -76,7 +77,12 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   assert.equal([...layers.values()].some(layer => layer.id.endsWith('-route')), false, 'no default waypoint route');
   const tail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
   const live = sources.get(tail.source);
-  const history = [...sources.values()].find(source => source !== live);
+  const history = [...sources].find(([id]) => id.endsWith('-history'))[1];
+  const future = [...sources].find(([id]) => id.endsWith('-future'))[1];
+  const historyLayer = [...layers.values()].find(layer => layer.id.endsWith('-history-line'));
+  const remainingLayer = [...layers.values()].find(layer => layer.id.endsWith('-remaining'));
+  assert.notEqual(historyLayer.paint['line-color'], remainingLayer.paint['line-color'], 'travelled and upcoming paths use distinct colors');
+  assert.deepEqual(Array.from(historyLayer.paint['line-dasharray']), [2, 3], 'travelled path is dashed');
   assert.equal(elements.some(element => element.tag === 'line' || element.tag === 'polyline'), false, 'no SVG route or trail');
   const initialCameraWrites = cameraWrites;
   renderer.setOptions({ follow: true, showRangeRings: true });
@@ -88,6 +94,7 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   }));
   assert.deepEqual(validateStyleMin(style), [], 'native line layers satisfy the installed MapLibre style specification');
   simulation.setVisible(true);
+  simulation.deploy({ ...createMissionDraft(12), origin: navigation.INITIAL_CENTER, waypoints: [navigation.WAYPOINT] });
   simulation.setPlaying(true);
   let snapshots = 0;
   simulation.subscribe(() => snapshots++);
@@ -97,6 +104,7 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
     for (const callback of callbacks) callback(now);
   }
   const oldUI = simulation.getSnapshot();
+  const futureWrites = future.writes;
   step();
   assert.equal(simulation.getSnapshot(), oldUI, 'UI did not tick');
   assert.equal(markers[0].position, simulation.getFrame().position);
@@ -104,12 +112,15 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   assert.equal(markers[1].position, simulation.getFrame().position);
   assert.equal(camera, simulation.getFrame().position);
   assert.deepEqual(live.data.features[0].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');
+  assert.deepEqual(live.data.features[1].geometry.coordinates[0], simulation.getFrame().position, 'remaining route starts at the same live position');
+  assert.deepEqual(live.data.features[1].geometry.coordinates[1], navigation.WAYPOINT);
   for (let i = 0; i < 599; i++) step();
   assert.ok(snapshots <= 40);
-  assert.ok(history.data.geometry.coordinates.length > 2, 'sampled track is a native geographic line');
+  assert.ok(history.data.features[0].geometry.coordinates.length > 2, 'sampled track is a native geographic line');
   assert.ok(history.writes < 40, 'history is not rebuilt every frame');
   assert.deepEqual(live.data.features[0].geometry.coordinates[1], simulation.getFrame().position);
-  assert.equal(live.data.features.length, 1, 'per-frame source contains only the trail tip');
+  assert.equal(live.data.features.length, 2, 'per-frame source contains only the trail tip and current leg');
+  assert.equal(future.writes, futureWrites, 'future route is not rebuilt each frame');
   const pendingBefore = [...scheduled.keys()];
   renderer.setOptions({ follow: false, showRangeRings: false });
   assert.deepEqual([...scheduled.keys()], pendingBefore, 'display toggles do not restart simulation');
@@ -120,10 +131,21 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   assert.equal(live.writes, writesBeforePan, 'camera changes do not rebuild geographic lines');
   emit('dragstart');
   assert.equal(pans, 1);
+  simulation.setMultiplier(3600);
+  for (let i = 0; i < 100 && simulation.getFrame().playing; i++) step();
+  assert.equal(simulation.getFrame().phase, 'complete');
+  for (const source of sources.values()) assert.equal(source.data.features.length, 0, 'completion clears all route and trail sources');
+  simulation.deploy({ ...createMissionDraft(12), waypoints: [navigation.destinationFrom(navigation.WAYPOINT, 90, 1), navigation.destinationFrom(navigation.WAYPOINT, 90, 2)] });
+  step();
+  assert.equal(future.data.features.length, 1);
+  assert.ok(history.data.features.length > 0);
+  simulation.abort();
+  for (const source of sources.values()) assert.equal(source.data.features.length, 0, 'abort clears all route and trail sources');
+  emit('move');
+  for (const source of sources.values()) assert.equal(source.data.features.length, 0, 'camera changes cannot restore an ended mission');
   simulation.reset();
-  assert.deepEqual(history.data.geometry.coordinates[0], navigation.INITIAL_CENTER);
-  assert.deepEqual(history.data.geometry.coordinates[1], navigation.INITIAL_CENTER);
-  assert.deepEqual(live.data.features[0].geometry.coordinates[1], navigation.INITIAL_CENTER);
+  assert.equal(history.data.features.length, 0);
+  assert.equal(live.data.features.length, 0);
   assert.equal(markers[0].position, simulation.getFrame().position);
   rejectUpdates = true;
   simulation.setSpeed(18);
@@ -145,11 +167,12 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   // The mapcn isLoaded effect tears down before setStyle and reattaches once
   // the replacement style loads. Recreate against the same simulation/marker.
   simulation.setVisible(true);
+  simulation.deploy({ ...createMissionDraft(12), origin: navigation.INITIAL_CENTER, waypoints: [navigation.WAYPOINT] });
   simulation.setPlaying(true);
   step();
   const replacement = exports.createVesselRenderer(map, { Marker }, simulation,
     { marker: vesselMarker, tooltip }, { follow: false, showRangeRings: true }, () => pans++);
-  assert.equal(layers.size, 2, 'trail layers recreated after a style swap');
+  assert.equal(layers.size, 5, 'trail and remaining-route layers recreated after a style swap');
   const replacementTail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
   const replacementLive = sources.get(replacementTail.source);
   assert.deepEqual(replacementLive.data.features[0].geometry.coordinates[1], simulation.getFrame().position, 'restores current position, not initial position');

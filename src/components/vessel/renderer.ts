@@ -51,33 +51,57 @@ export function createVesselRenderer(
   const prefix = `vessel-lines-${++rendererSequence}`;
   const liveSourceId = `${prefix}-live`;
   const historySourceId = `${prefix}-history`;
+  const futureSourceId = `${prefix}-future`;
   const tailLayerId = `${prefix}-tail`;
   const historyLayerId = `${prefix}-history-line`;
+  const futureLayerId = `${prefix}-future-line`;
+  const remainingLayerId = `${prefix}-remaining`;
+  const transitLayerId = `${prefix}-transit`;
   const liveData: FeatureCollection<LineString> = {
     type: 'FeatureCollection',
-    features: [
-      { type: 'Feature', properties: { kind: 'tail' }, geometry: { type: 'LineString', coordinates: [INITIAL_CENTER, INITIAL_CENTER] } },
-    ],
+    features: [],
   };
   map.addSource(liveSourceId, { type: 'geojson', data: liveData });
   map.addSource(historySourceId, { type: 'geojson', data: {
-    type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [INITIAL_CENTER, INITIAL_CENTER] },
+    type: 'FeatureCollection', features: [],
   } });
+  map.addSource(futureSourceId, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({
     id: historyLayerId, type: 'line', source: historySourceId,
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#78999e', 'line-width': 2, 'line-opacity': 0.5 },
+    paint: { 'line-color': '#94a3b8', 'line-width': 1.5, 'line-opacity': 0.65, 'line-dasharray': [2, 3] },
   });
   map.addLayer({
     id: tailLayerId, type: 'line', source: liveSourceId,
     filter: ['==', ['get', 'kind'], 'tail'],
     layout: { 'line-cap': 'butt', 'line-join': 'round' },
-    paint: { 'line-color': '#78999e', 'line-width': 2, 'line-opacity': 0.5 },
+    paint: { 'line-color': '#94a3b8', 'line-width': 1.5, 'line-opacity': 0.65, 'line-dasharray': [2, 3] },
+  });
+  map.addLayer({
+    id: futureLayerId, type: 'line', source: futureSourceId,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#14b8a6', 'line-width': 2, 'line-opacity': 1 },
+  });
+  map.addLayer({
+    id: remainingLayerId, type: 'line', source: liveSourceId,
+    filter: ['==', ['get', 'kind'], 'remaining'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#14b8a6', 'line-width': 2, 'line-opacity': 1 },
+  });
+  map.addLayer({
+    id: transitLayerId, type: 'line', source: liveSourceId,
+    filter: ['==', ['get', 'kind'], 'transit'],
+    layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    paint: { 'line-color': '#14b8a6', 'line-width': 1.5, 'line-opacity': 0.85, 'line-dasharray': [4, 3] },
   });
   const liveSource = map.getSource<MapLibre.GeoJSONSource>(liveSourceId)!;
   const historySource = map.getSource<MapLibre.GeoJSONSource>(historySourceId)!;
+  const futureSource = map.getSource<MapLibre.GeoJSONSource>(futureSourceId)!;
   let previousFrame: VesselFrame | undefined;
   let previousTrack: VesselFrame['track'] | undefined;
+  let previousMission: VesselFrame['mission'] | undefined;
+  let previousTargetIndex = -1;
+  let previousTrailVisible = false;
 
   function updateSource(source: MapLibre.GeoJSONSource, data: Parameters<MapLibre.GeoJSONSource['setData']>[0]) {
     void source.setData(data).catch(error => {
@@ -120,17 +144,31 @@ export function createVesselRenderer(
         pixelsPerNm = scale;
       }
       if (frame !== previousFrame) {
-        liveData.features[0].geometry.coordinates = [frame.track[frame.track.length - 1], frame.position];
-        // Only the two-point trail tip enters the worker each simulation frame.
+        const active = frame.mission !== null && frame.phase !== 'complete' && frame.phase !== 'aborted';
+        liveData.features = active ? [
+          { type: 'Feature', properties: { kind: 'tail' }, geometry: { type: 'LineString', coordinates: [frame.track.at(-1) ?? frame.position, frame.position] } },
+          { type: 'Feature', properties: { kind: frame.mission?.type === 'grid' && frame.targetIndex === 0 ? 'transit' : 'remaining' }, geometry: { type: 'LineString', coordinates: [frame.position, frame.nextWaypoint ?? frame.position] } },
+        ] : [];
+        // Only the trail tip and current leg change at frame rate.
         updateSource(liveSource, liveData);
-        if (frame.track !== previousTrack) {
+        if (frame.track !== previousTrack || active !== previousTrailVisible) {
           updateSource(historySource, {
-            type: 'Feature', properties: {},
-            geometry: { type: 'LineString', coordinates: frame.track.length > 1
-              ? [...frame.track] : [frame.position, frame.position] },
+            type: 'FeatureCollection', features: active && frame.track.length > 1 ? [{
+              type: 'Feature', properties: {},
+              geometry: { type: 'LineString', coordinates: [...frame.track] },
+            }] : [],
           });
           previousTrack = frame.track;
         }
+        if (frame.mission !== previousMission || frame.targetIndex !== previousTargetIndex || active !== previousTrailVisible) {
+          const coordinates = active ? frame.mission!.targets.slice(frame.targetIndex) : [];
+          updateSource(futureSource, { type: 'FeatureCollection', features: coordinates.length > 1 ? [{
+            type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates },
+          }] : [] });
+          previousMission = frame.mission;
+          previousTargetIndex = frame.targetIndex;
+        }
+        previousTrailVisible = active;
         previousFrame = frame;
       }
     } finally {
@@ -162,10 +200,10 @@ export function createVesselRenderer(
       map.off('resize', drawOnCameraChange);
       map.off('dragstart', handlePan);
       rings.remove();
-      for (const id of [tailLayerId, historyLayerId]) {
+      for (const id of [tailLayerId, historyLayerId, futureLayerId, remainingLayerId, transitLayerId]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
-      for (const id of [liveSourceId, historySourceId]) {
+      for (const id of [liveSourceId, historySourceId, futureSourceId]) {
         if (map.getSource(id)) map.removeSource(id);
       }
     },

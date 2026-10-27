@@ -5,6 +5,26 @@ export const INITIAL_POSITION = { longitude: -70.85, latitude: 42.31 };
 export const INITIAL_HEADING = 135;
 export const ROUTE_DISTANCE_NM = 2;
 
+export function bearingBetween(from: Coordinate, to: Coordinate) {
+  const rad = Math.PI / 180;
+  const delta = (to[0] - from[0]) * rad;
+  const latitude = from[1] * rad, targetLatitude = to[1] * rad;
+  return (Math.atan2(
+    Math.sin(delta) * Math.cos(targetLatitude),
+    Math.cos(latitude) * Math.sin(targetLatitude) - Math.sin(latitude) * Math.cos(targetLatitude) * Math.cos(delta),
+  ) / rad + 360) % 360;
+}
+
+export function destinationFrom(from: Coordinate, heading: number, nauticalMiles: number): Coordinate {
+  if (!nauticalMiles) return [...from];
+  const rad = Math.PI / 180;
+  const latitude = from[1] * rad, longitude = from[0] * rad;
+  const angle = nauticalMiles * 1852 / 6371008.8, bearing = heading * rad;
+  const endLatitude = Math.asin(Math.sin(latitude) * Math.cos(angle) + Math.cos(latitude) * Math.sin(angle) * Math.cos(bearing));
+  const endLongitude = longitude + Math.atan2(Math.sin(bearing) * Math.sin(angle) * Math.cos(latitude), Math.cos(angle) - Math.sin(latitude) * Math.sin(endLatitude));
+  return [((endLongitude / rad + 540) % 360) - 180, endLatitude / rad];
+}
+
 // Project a distance and bearing from the vessel on a spherical Earth.
 export function destination(distanceNm: number): Coordinate {
   if (distanceNm === 0) return [INITIAL_POSITION.longitude, INITIAL_POSITION.latitude];
