@@ -37,6 +37,7 @@ import { getVesselActivity } from '@/lib/vessel/vessel';
 import { VesselFuel } from './VesselFuel';
 import { VesselTelemetry } from './VesselTelemetry';
 import { MissionNumberField } from './MissionNumberField';
+import { GridMissionRoute } from './GridMissionRoute';
 
 const secondaryButton =
   'inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40';
@@ -100,15 +101,12 @@ export function MissionPlanner({
   );
   const reviewing = step === 'review';
   const placingWaypoints = step === 'route' && draft.type === 'waypoint';
-  const [gridStart, setGridStart] = useState<{
-    point: Coordinate;
-    origin: Coordinate;
-  } | null>(null);
   const gridPlan = useMemo(() => buildGridPlan(draft.grid), [draft.grid]);
   const coordinates = useMemo(() => missionCoordinates(draft), [draft]);
   const distance = useMemo(() => missionDistance(draft), [draft]);
   const speedError = missionSpeedError(draft);
   const hasRoute = coordinates.length > 1;
+  const hasPlannedPoints = draft.waypoints.length > 0 || draft.grid.center !== null;
   const minutes =
     draft.speed && draft.speed > 0
       ? Math.ceil((distance / draft.speed) * 60)
@@ -125,12 +123,6 @@ export function MissionPlanner({
     onDraftChange({ ...draft, ...changes, saved: false });
   const updateGrid = (changes: Partial<MissionDraft['grid']>) =>
     update({ grid: { ...draft.grid, ...changes } });
-  const resetRoute = () => {
-    if (draft.type === 'waypoint') update({ origin: null, waypoints: [] });
-    else update({ grid: { ...draft.grid, origin: null, corners: [] } });
-    setGridStart(null);
-    setEditing(draft.type === 'waypoint');
-  };
 
   const addPoint = useEffectEvent((event: MapMouseEvent) => {
     if (!(event.originalEvent.target instanceof HTMLCanvasElement)) return;
@@ -139,15 +131,30 @@ export function MissionPlanner({
     if (draft.type === 'waypoint') {
       const next = addMissionWaypoint(draft, position, point);
       if (next !== draft) onDraftChange(next);
-    } else if (!gridStart) {
-      setGridStart({ point, origin: [...position] });
     } else {
-      updateGrid({
-        corners: [gridStart.point, point],
-        origin: gridStart.origin,
-      });
-      setGridStart(null);
+      const grid = {
+        ...draft.grid,
+        center: [...point],
+        origin: draft.grid.origin ?? [...position],
+      } satisfies MissionDraft['grid'];
+      updateGrid(grid);
       setEditing(false);
+      const plan = buildGridPlan(grid);
+      if (map && plan.boundary.length) {
+        const longitudes = plan.boundary.map(([longitude]) => point[0] + ((longitude - point[0] + 540) % 360) - 180);
+        const latitudes = plan.boundary.map(([, latitude]) => latitude);
+        const container = map.getContainer();
+        const drawerWidth = container.querySelector('.mission-drawer-popup')?.getBoundingClientRect().width ?? 384;
+        map.fitBounds([
+          [Math.min(...longitudes), Math.min(...latitudes)],
+          [Math.max(...longitudes), Math.max(...latitudes)],
+        ], {
+          padding: { top: 96, bottom: 96, left: 64, right: Math.min(drawerWidth + 96, container.clientWidth / 2) },
+          maxZoom: 18,
+          duration: 350,
+          animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        });
+      }
     }
   });
 
@@ -174,33 +181,32 @@ export function MissionPlanner({
   );
   const switchType = (type: MissionType) => {
     setEditing(false);
-    setGridStart(null);
     update({ type });
   };
 
   const editRoute = () => {
-    setGridStart(null);
     setStep('route');
-    setEditing(draft.type === 'waypoint' || draft.grid.corners.length === 0);
+    setEditing(draft.type === 'waypoint' || !draft.grid.center);
   };
   const discardDraft = () => {
     setDiscardOpen(false);
     setEditing(false);
-    setGridStart(null);
     onCancel();
   };
-  const routeReady = hasRoute && (draft.type !== 'grid' || !gridPlan.error);
+  const routeReady = hasRoute && (draft.type !== 'grid' || (!gridPlan.error && !editing));
 
   return (
     <>
       {isOpen &&
-        placingWaypoints &&
+        (placingWaypoints || (step === 'route' && draft.type === 'grid' && editing)) &&
         map &&
         createPortal(
           <div className='pointer-events-none absolute top-4 right-120 left-4 z-50 flex justify-center'>
             <div className='max-w-full rounded-xl border bg-background px-4 py-3 text-foreground shadow-sm'>
               <p role='status' className='text-sm font-medium'>
-                {draft.waypoints.length === 0
+                {draft.type === 'grid'
+                  ? 'Click the map to place your grid.'
+                  : draft.waypoints.length === 0
                   ? 'Click the map to place your first waypoint.'
                   : 'Click the map to add the next waypoint.'}
               </p>
@@ -216,7 +222,8 @@ export function MissionPlanner({
           linePaint={{ 'line-color': '#14b8a6', 'line-width': 1.5 }}
         />
       )}
-      {isOpen && hasRoute && (
+      {isOpen && draft.type === 'grid' && hasRoute && <GridMissionRoute id={`mission-grid-${vessel.id}`} origin={draft.grid.origin} route={gridPlan.route} />}
+      {isOpen && draft.type === 'waypoint' && hasRoute && (
         <MapRoute
           id={`mission-draft-${vessel.id}`}
           coordinates={coordinates}
@@ -244,11 +251,11 @@ export function MissionPlanner({
             </MarkerContent>
           </MapMarker>
         ))}
-      {isOpen && editing && gridStart && (
-        <MapMarker longitude={gridStart.point[0]} latitude={gridStart.point[1]}>
+      {isOpen && step === 'route' && draft.type === 'grid' && draft.grid.center && (
+        <MapMarker longitude={draft.grid.center[0]} latitude={draft.grid.center[1]}>
           <MarkerContent>
             <span
-              aria-label='First grid corner'
+              aria-label='Grid center'
               className='block size-3 rounded-sm border-2 border-white bg-teal-600'
             />
           </MarkerContent>
@@ -330,7 +337,7 @@ export function MissionPlanner({
               </h3>
               {(draft.type === 'waypoint'
                 ? draft.waypoints.length > 0
-                : step === 'speeds' || reviewing) && (
+                : gridPlan.passCount > 0) && (
                 <span className='text-xs text-muted-foreground'>
                   {draft.type === 'grid'
                     ? `${gridPlan.passCount} passes`
@@ -379,60 +386,14 @@ export function MissionPlanner({
               </>
             ) : (
               <>
-                <div className='flex items-center justify-between gap-3'>
-                  <h3 className='text-sm font-medium'>Grid area</h3>
-                  {routeReady && (
-                    <span className='text-xs text-muted-foreground'>
-                      {gridPlan.passCount} passes
-                    </span>
-                  )}
-                </div>
-                <p
-                  role='status'
-                  className='mt-2 text-xs leading-relaxed text-muted-foreground'
-                >
-                  {editing && isOpen
-                    ? gridStart
-                      ? 'Click the opposite corner to finish the area.'
-                      : 'Click the first corner of your grid area.'
-                    : 'Adjust spacing and heading using the map preview.'}
-                </p>
-                <button
-                  type='button'
-                  aria-pressed={editing}
-                  className={`${secondaryButton} mt-3`}
-                  onClick={() => {
-                    setGridStart(null);
-                    setEditing(value => !value);
-                  }}
-                >
-                  {editing
-                    ? 'Cancel drawing'
-                    : draft.grid.corners.length
-                      ? 'Redraw grid area'
-                      : 'Draw grid area'}
-                </button>
-                {draft.grid.corners.length > 0 && (
-                  <button
-                    type='button'
-                    className='ml-2 min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
-                    onClick={resetRoute}
-                  >
-                    Reset route
-                  </button>
-                )}
-                {draft.grid.corners.length === 2 && (
-                  <div className='mt-4 grid grid-cols-2 gap-3'>
+                {draft.grid.center && !editing && <div className='rounded-xl bg-muted p-4'>
+                  <h3 className='text-base font-medium'>Define grid area</h3>
+                  <p className='mt-1 mb-4 text-xs leading-relaxed text-muted-foreground'>Adjust the dimensions and passes using the map preview.</p>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <MissionNumberField label='Width' unit='m' value={draft.grid.width} min={10} max={20000} step={10} onValueChange={width => updateGrid({ width })} />
+                    <MissionNumberField label='Height' unit='m' value={draft.grid.height} min={10} max={20000} step={10} onValueChange={height => updateGrid({ height })} />
                     <MissionNumberField
-                      label='Pass spacing'
-                      unit='m'
-                      value={draft.grid.spacing}
-                      min={1}
-                      step={10}
-                      onValueChange={spacing => updateGrid({ spacing })}
-                    />
-                    <MissionNumberField
-                      label='Grid heading'
+                      label='Grid rotation'
                       unit='°'
                       value={draft.grid.heading}
                       min={0}
@@ -440,13 +401,24 @@ export function MissionPlanner({
                       step={5}
                       onValueChange={heading => updateGrid({ heading })}
                     />
+                    <MissionNumberField
+                      label='Pass spacing'
+                      unit='m'
+                      value={draft.grid.spacing}
+                      min={1}
+                      step={1}
+                      onValueChange={spacing => updateGrid({ spacing })}
+                    />
                   </div>
-                )}
+                  <p className='mt-3 text-[10px] leading-relaxed text-muted-foreground'>0° runs passes north–south. Rotation turns the whole grid clockwise.</p>
+                  <Button className={`${secondaryButton} mt-3 bg-background`} onClick={() => setEditing(true)}>Reposition grid</Button>
                 {gridPlan.error && (
                   <p role='alert' className='mt-2 text-xs text-red-700'>
                     {gridPlan.error}
                   </p>
                 )}
+                </div>}
+                {draft.grid.center && editing && <Button className={secondaryButton} onClick={() => setEditing(false)}>Keep current position</Button>}
               </>
             )}
           </section>
@@ -458,19 +430,14 @@ export function MissionPlanner({
               aria-label='Route summary'
               className='mt-3 text-xs tabular-nums'
             >
-              {draft.type === 'grid' && (
-                <p className='mt-2 text-muted-foreground'>
-                  {draft.grid.spacing} m spacing · {draft.grid.heading}° heading
-                </p>
-              )}
               <dl className='mt-1 grid grid-cols-2 gap-3'>
                 <div>
                   <dt className='text-muted-foreground'>Distance</dt>
-                  <dd className='mt-1 font-medium'>{distance.toFixed(2)} nm</dd>
+                  <dd className='mt-1 text-sm font-medium'>{distance.toFixed(2)} nm</dd>
                 </div>
                 <div>
                   <dt className='text-muted-foreground'>Est. travel time</dt>
-                  <dd className='mt-1 font-medium'>{duration}</dd>
+                  <dd className='mt-1 text-sm font-medium'>{duration}</dd>
                 </div>
                 {reviewing && (
                   <>
@@ -487,6 +454,26 @@ export function MissionPlanner({
                   </>
                 )}
               </dl>
+              {draft.type === 'grid' && (
+                <dl aria-label='Grid configuration' className='mt-4 grid grid-cols-2 gap-3 border-t pt-4'>
+                  <div>
+                    <dt className='text-muted-foreground'>Width</dt>
+                    <dd className='mt-1'>{draft.grid.width?.toLocaleString('en-US') ?? '—'} m</dd>
+                  </div>
+                  <div>
+                    <dt className='text-muted-foreground'>Height</dt>
+                    <dd className='mt-1'>{draft.grid.height?.toLocaleString('en-US') ?? '—'} m</dd>
+                  </div>
+                  <div>
+                    <dt className='text-muted-foreground'>Rotation</dt>
+                    <dd className='mt-1'>{draft.grid.heading ?? '—'}°</dd>
+                  </div>
+                  <div>
+                    <dt className='text-muted-foreground'>Pass spacing</dt>
+                    <dd className='mt-1'>{draft.grid.spacing?.toLocaleString('en-US') ?? '—'} m</dd>
+                  </div>
+                </dl>
+              )}
             </section>
             {!reviewing && (
               <section
@@ -538,7 +525,7 @@ export function MissionPlanner({
       </div>
 
       <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
-        <div className='mb-2 flex items-center justify-between gap-3'>
+        {(step !== 'type' || hasPlannedPoints) && <div className='mb-2 flex items-center justify-between gap-3'>
         {step !== 'type' && (
           <Button
             type='button'
@@ -547,7 +534,6 @@ export function MissionPlanner({
               if (step === 'speeds') editRoute();
               else {
                 setEditing(false);
-                setGridStart(null);
                 setStep(reviewing ? 'speeds' : 'type');
               }
             }}
@@ -559,15 +545,12 @@ export function MissionPlanner({
                 : 'Back to mission type'}
           </Button>
         )}
-        <Button
+        {hasPlannedPoints && <Button
           type='button'
           className='ml-auto min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
-          onClick={() => {
-            if (draft.waypoints.length || draft.grid.corners.length || gridStart) setDiscardOpen(true);
-            else discardDraft();
-          }}
-        >Cancel planning</Button>
-        </div>
+          onClick={() => setDiscardOpen(true)}
+        >Cancel planning</Button>}
+        </div>}
         <Button
           type='button'
           disabled={
@@ -582,7 +565,6 @@ export function MissionPlanner({
               return;
             }
             setEditing(false);
-            setGridStart(null);
             if (step === 'route') setStep('speeds');
             else if (reviewing) {
               onDraftChange({ ...draft, saved: true });
@@ -595,9 +577,7 @@ export function MissionPlanner({
               ? 'Choose waypoints'
               : 'Define grid area'
             : step === 'route'
-              ? draft.type === 'waypoint'
-                ? 'Set mission speeds'
-                : 'Use grid area'
+              ? 'Set mission speeds'
               : reviewing
                 ? 'Save draft'
                 : 'Review mission'}
