@@ -6,7 +6,9 @@ import {
   MarkerTooltip,
 } from '@/components/ui/map';
 import { useCallback, useState } from 'react';
-import { VesselLayer } from '@/components/vessel/vessel-layer';
+import { MapSettings } from '@/components/MapSettings';
+import { SeamarkLayer } from '@/components/vessel/SeamarkLayer';
+import { VesselLayer } from '@/components/vessel/VesselLayer';
 import { useVesselSimulation } from '@/lib/vessel/use-vessel-simulation';
 import {
   INITIAL_CENTER,
@@ -15,15 +17,11 @@ import {
   WAYPOINT,
 } from '@/lib/vessel/navigation';
 
-function formatCoordinate(value: number, positive: string, negative: string) {
-  return `${Math.abs(value).toFixed(4)}° ${value >= 0 ? positive : negative}`;
-}
-
 function App() {
   const { simulation, snapshot } = useVesselSimulation();
-  const { remaining, heading, arrived, playing, speed, multiplier, position } =
-    snapshot;
+  const { heading, arrived, playing, speed, multiplier } = snapshot;
   const [showRangeRings, setShowRangeRings] = useState(true);
+  const [showSeamarks, setShowSeamarks] = useState(true);
   const [follow, setFollow] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -31,7 +29,8 @@ function App() {
   const [waypointLongitude, waypointLatitude] = WAYPOINT;
   return (
     <main className='relative h-dvh w-full' aria-label='Interactive map'>
-      <Map center={INITIAL_CENTER} zoom={12.5}>
+      <Map center={INITIAL_CENTER} zoom={12.5} theme='dark'>
+        {showSeamarks && <SeamarkLayer />}
         <VesselLayer
           simulation={simulation}
           follow={follow}
@@ -55,7 +54,15 @@ function App() {
             Demo waypoint · {ROUTE_DISTANCE_NM} nm · bearing {INITIAL_HEADING}°
           </MarkerTooltip>
         </MapMarker>
-        <MapControls position='top-right' showZoom showCompass showFullscreen />
+        <div className='absolute top-2 right-2 z-10 flex flex-col items-end gap-1.5'>
+          <MapControls className='static' showZoom showCompass showFullscreen />
+          <MapSettings
+            showSeamarks={showSeamarks}
+            onSeamarksChange={setShowSeamarks}
+            showRangeRings={showRangeRings}
+            onRangeRingsChange={setShowRangeRings}
+          />
+        </div>
       </Map>
       <div className='absolute top-4 left-4 rounded-lg border bg-background/95 px-4 py-3 shadow-sm'>
         <div className='flex items-center justify-between gap-8'>
@@ -93,15 +100,6 @@ function App() {
             Follow {follow ? 'on' : 'off'}
           </button>
         </div>
-        <label className='mt-2 flex min-h-11 cursor-pointer items-center gap-2 text-xs'>
-          <input
-            type='checkbox'
-            checked={showRangeRings}
-            onChange={event => setShowRangeRings(event.target.checked)}
-            className='size-4 accent-primary'
-          />
-          Range rings
-        </label>
         <div className='mt-3 grid grid-cols-2 gap-3 text-xs'>
           <label className='grid gap-1 text-muted-foreground'>
             Vessel speed
@@ -135,30 +133,6 @@ function App() {
               ))}
             </select>
           </label>
-        </div>
-        <dl className='mt-3 grid grid-cols-[auto_auto] gap-x-6 gap-y-1 font-mono text-xs tabular-nums'>
-          <dt className='text-muted-foreground'>LAT</dt>
-          <dd className='text-right'>
-            {formatCoordinate(position[1], 'N', 'S')}
-          </dd>
-          <dt className='text-muted-foreground'>LON</dt>
-          <dd className='text-right'>
-            {formatCoordinate(position[0], 'E', 'W')}
-          </dd>
-        </dl>
-        <div className='mt-3 flex items-center gap-2 border-t pt-2 text-[11px] text-muted-foreground'>
-          <span
-            aria-hidden='true'
-            className='w-5 border-t border-dashed border-[#579b9c]'
-          />
-          Waypoint · {remaining.toFixed(2)} nm remaining
-        </div>
-        <div className='mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground'>
-          <span
-            aria-hidden='true'
-            className='w-5 border-t-2 border-[#78999e]'
-          />
-          Simulated voyage track
         </div>
       </div>
     </main>

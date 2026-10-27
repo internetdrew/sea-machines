@@ -22,6 +22,7 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { animateAttributionCollapse } from "@/lib/attribution-motion";
 
 type MapLibreModule = typeof MapLibreGL;
 
@@ -320,6 +321,8 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   useEffect(() => {
     let cancelled = false;
     let map: MapLibreGL.Map | undefined;
+    let attributionTimer: ReturnType<typeof setTimeout> | undefined;
+    let stopAttributionMotion: (() => void) | undefined;
 
     loadMapLibre()
       .then((lib) => {
@@ -347,7 +350,19 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
         map = instance;
 
         // Track load state
-        instance.on("load", () => setIsLoaded(true));
+        instance.on("load", () => {
+          setIsLoaded(true);
+          // Show initial attribution, then collapse it per OSM's five-second guideline.
+          const attribution = instance.getContainer().querySelector<HTMLElement>(".maplibregl-ctrl-attrib");
+          const button = attribution?.querySelector<HTMLElement>(".maplibregl-ctrl-attrib-button");
+          // A deliberate interaction takes precedence over automatic dismissal.
+          button?.addEventListener("click", () => clearTimeout(attributionTimer), { once: true, capture: true });
+          if (attribution) stopAttributionMotion = animateAttributionCollapse(attribution);
+          attributionTimer = setTimeout(() => {
+            if (attribution?.classList.contains("maplibregl-compact-show") &&
+                !attribution.matches(":hover, :focus-within")) button?.click();
+          }, 5000);
+        });
         instance.on("style.load", () => {
           styleSwapInFlightRef.current = false;
           setIsStyleLoaded(true);
@@ -372,6 +387,8 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
 
     return () => {
       cancelled = true;
+      clearTimeout(attributionTimer);
+      stopAttributionMotion?.();
       if (!map) return;
       map.remove();
       setIsLoaded(false);
@@ -408,16 +425,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     internalUpdateRef.current = false;
   }, [mapInstance, isControlled, viewport]);
 
-  // Handle style change: close the gate (so layer children tear down and
-  // re-add on the incoming style) - the swap itself is staged to the effect below.
+  // Custom style changes tear down layer children before loading the incoming style.
   useEffect(() => {
     if (!mapInstance || !resolvedTheme) return;
-
-    const newStyle =
-      resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
-
+    const newStyle = resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
     if (currentStyleRef.current === newStyle) return;
-
     currentStyleRef.current = newStyle;
     setIsStyleLoaded(false);
     setPendingStyle(newStyle);
