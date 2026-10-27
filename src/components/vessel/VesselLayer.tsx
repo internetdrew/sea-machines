@@ -27,7 +27,7 @@ function formatCoordinate(value: number, positive: string, negative: string) {
 // Demo tank readings until vessel fuel telemetry is available.
 const DEMO_FUEL_TANKS = [
   { name: 'Port', remainingLiters: 210, capacityLiters: 250 },
-  { name: 'Starboard', remainingLiters: 200, capacityLiters: 250 },
+  { name: 'Starboard', remainingLiters: 60, capacityLiters: 250 },
 ];
 
 type Props = VesselDisplayOptions & {
@@ -115,7 +115,7 @@ export function VesselLayer({
             sideOffset={8}
             className='z-50 data-anchor-hidden:invisible'
           >
-            <Popover.Popup className='relative w-58 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
+            <Popover.Popup className='relative w-64 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
               <Popover.Close
                 aria-label='Close vessel details'
                 className='absolute top-2 right-2 inline-flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-150 motion-reduce:transition-none'
@@ -146,6 +146,7 @@ export function VesselLayer({
                     <TextSwap text={status.label} />
                   </motion.span>
                 </motion.span>
+                {/* Health badge pending a defined readiness/health model.
                 <motion.span
                   layout={reducedMotion ? false : 'position'}
                   layoutDependency={status.label}
@@ -154,13 +155,10 @@ export function VesselLayer({
                 >
                   Ready
                 </motion.span>
+                */}
               </div>
 
               <dl className='mt-4 grid grid-cols-[auto_auto] justify-between gap-x-4 gap-y-2 text-xs tabular-nums [&>dd]:text-right'>
-                <dt className='text-muted-foreground'>Latitude</dt>
-                <dd>{formatCoordinate(snapshot.position[1], 'N', 'S')}</dd>
-                <dt className='text-muted-foreground'>Longitude</dt>
-                <dd>{formatCoordinate(snapshot.position[0], 'E', 'W')}</dd>
                 <dt className='text-muted-foreground'>Heading</dt>
                 <dd>
                   {String(Math.round(snapshot.heading)).padStart(3, '0')}°
@@ -169,10 +167,14 @@ export function VesselLayer({
                 <dd>{snapshot.speed} kn</dd>
                 <dt className='text-muted-foreground'>Next waypoint</dt>
                 <dd>{snapshot.remaining.toFixed(2)} nm</dd>
+                <dt className='text-muted-foreground'>Latitude</dt>
+                <dd>{formatCoordinate(snapshot.position[1], 'N', 'S')}</dd>
+                <dt className='text-muted-foreground'>Longitude</dt>
+                <dd>{formatCoordinate(snapshot.position[0], 'E', 'W')}</dd>
               </dl>
               <VesselFuel tanks={DEMO_FUEL_TANKS} />
 
-              <Button className='flex items-center cursor-pointer justify-center mt-6 gap-1 bg-black text-white w-full py-1.5 rounded-md'>
+              <Button className='flex items-center cursor-pointer justify-center mt-4 gap-1 bg-black text-white w-full py-1.5 rounded-md'>
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
                   width='24'

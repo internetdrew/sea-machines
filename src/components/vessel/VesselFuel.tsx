@@ -28,7 +28,7 @@ export function VesselFuel({ tanks }: { tanks: readonly FuelTank[] }) {
         <h3 id={titleId} className='font-medium'>Fuel</h3>
         <span className='text-[10px] text-muted-foreground'>Remaining / capacity</span>
       </div>
-      <div className='grid grid-cols-2 gap-4'>
+      <div className='grid grid-cols-2 items-start gap-4'>
         {tanks.map(tank => {
           const percent = Math.max(0, Math.min(100,
             tank.remainingLiters / tank.capacityLiters * 100,
@@ -39,7 +39,7 @@ export function VesselFuel({ tanks }: { tanks: readonly FuelTank[] }) {
               key={tank.name}
               value={percent}
               aria-valuetext={`${Math.round(percent)}%, ${tank.remainingLiters} of ${tank.capacityLiters} liters remaining, ${fuel.label.toLowerCase()}`}
-              className='grid min-w-0 grid-cols-[1fr_auto] items-baseline gap-x-1 gap-y-1.5'
+              className='grid min-w-0 content-start grid-cols-[1fr_auto] items-baseline gap-x-1 gap-y-1.5'
             >
               <Progress.Label className='text-muted-foreground'>{tank.name}</Progress.Label>
               <Progress.Value className={`text-right font-medium ${fuel.text}`} />
@@ -49,9 +49,6 @@ export function VesselFuel({ tanks }: { tanks: readonly FuelTank[] }) {
               <div className='col-span-2 text-[11px]'>
                 {tank.remainingLiters} <span className='text-muted-foreground'>/ {tank.capacityLiters} L</span>
               </div>
-              {fuel.label !== 'Normal' && (
-                <span className={`col-span-2 text-[10px] font-medium ${fuel.text}`}>{fuel.label}</span>
-              )}
             </Progress.Root>
           );
         })}
