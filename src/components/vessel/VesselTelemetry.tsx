@@ -12,7 +12,7 @@ export function VesselTelemetry({ snapshot, waypointLabel = 'Next waypoint', spe
         {String(Math.round(snapshot.heading)).padStart(3, '0')}°
       </dd>
       <dt className='text-muted-foreground'>{speedLabel}</dt>
-      <dd>{snapshot.speed} kn</dd>
+      <dd>{snapshot.speed.toFixed(1)} kn</dd>
       <dt className='text-muted-foreground'>{waypointLabel}</dt>
       <dd>{snapshot.nextWaypoint ? `${snapshot.remaining.toFixed(2)} nm` : '—'}</dd>
       <dt className='text-muted-foreground'>Latitude</dt>

@@ -38,14 +38,14 @@ export function GridMissionRoute({ id, origin, route, showLines = true, progress
     ))}
     <MapMarker longitude={start[0]} latitude={start[1]}>
       <MarkerContent className='pointer-events-none'>
-        <span aria-label={progress && progress.targetIndex > 0 ? 'Survey start (visited)' : 'Survey start'} className={`block size-3 rounded-full border-2 ${progress && progress.targetIndex > 0 ? 'border-slate-400 bg-slate-700' : 'border-white bg-teal-600'}`} />
-        <MarkerLabel className={`rounded-md border px-1.5 py-0.5 shadow-sm ${progress && progress.targetIndex > 0 ? 'border-white/20 bg-slate-800/90 text-slate-300' : 'border-teal-500/60 bg-teal-700 text-white'}`}>Start</MarkerLabel>
+        <span aria-label={progress && progress.targetIndex > 0 ? 'Survey start (visited)' : 'Survey start'} className={`block size-3 rounded-full border-2 ${progress && progress.targetIndex > 0 ? 'border-neutral-400 bg-neutral-700' : 'border-white bg-teal-600'}`} />
+        <MarkerLabel className={`rounded-md border px-1.5 py-0.5 shadow-sm ${progress && progress.targetIndex > 0 ? 'border-white/20 bg-neutral-900 text-neutral-300' : 'border-teal-500/60 bg-teal-700 text-white'}`}>Start</MarkerLabel>
       </MarkerContent>
     </MapMarker>
     <MapMarker longitude={end[0]} latitude={end[1]}>
       <MarkerContent className='pointer-events-none'>
-        <span aria-label='Survey end' className='block size-2.5 rounded-full border-2 border-white bg-slate-500' />
-        <MarkerLabel position='bottom' className='rounded-md border border-white/20 bg-slate-800/90 px-1.5 py-0.5 text-slate-200 shadow-sm'>End</MarkerLabel>
+        <span aria-label='Survey end' className='block size-2.5 rounded-full border-2 border-white bg-neutral-500' />
+        <MarkerLabel position='bottom' className='rounded-md border border-white/20 bg-neutral-900 px-1.5 py-0.5 text-neutral-200 shadow-sm'>End</MarkerLabel>
       </MarkerContent>
     </MapMarker>
   </>;

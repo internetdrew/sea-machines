@@ -17,7 +17,7 @@ export function createVesselRenderer(
   map: MapLibre.Map,
   mapLib: typeof MapLibre,
   simulation: VesselSimulation,
-  vessel: { marker: MapLibre.Marker; tooltip: MapLibre.Popup },
+  vessel: { marker: MapLibre.Marker; missionMarker?: MapLibre.Marker; tooltip: MapLibre.Popup },
   initialOptions: VesselDisplayOptions,
   onPan: () => void,
 ) {
@@ -27,7 +27,7 @@ export function createVesselRenderer(
   let pixelsPerNm = -1;
 
   // mapcn owns the vessel marker and its interactions. We only move it.
-  const { marker, tooltip } = vessel;
+  const { marker, missionMarker, tooltip } = vessel;
 
   const ringElement = document.createElement('div');
   ringElement.setAttribute('aria-hidden', 'true');
@@ -123,6 +123,7 @@ export function createVesselRenderer(
         }
       }
       marker.setLngLat(frame.position).setRotation(frame.heading);
+      missionMarker?.setLngLat(frame.position);
       if (tooltip.isOpen()) tooltip.setLngLat(frame.position);
       const visible = String(options.showRangeRings);
       if (ringsSvg.getAttribute('data-visible') !== visible) {

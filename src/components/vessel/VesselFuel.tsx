@@ -2,19 +2,7 @@ import { useId } from 'react';
 import { Progress } from '@base-ui/react/progress';
 
 import type { FuelTank } from '@/lib/vessel/vessel';
-
-const LOW_THRESHOLD = 30;
-const CRITICAL_THRESHOLD = 15;
-
-function getFuelAppearance(percent: number) {
-  if (percent <= CRITICAL_THRESHOLD) {
-    return { indicator: 'bg-red-600', text: 'text-red-700', label: 'Critical' };
-  }
-  if (percent <= LOW_THRESHOLD) {
-    return { indicator: 'bg-amber-500', text: 'text-amber-700', label: 'Low' };
-  }
-  return { indicator: 'bg-emerald-600', text: 'text-emerald-700', label: 'Normal' };
-}
+import { getFuelAppearance } from '@/lib/vessel/fuel';
 
 export function VesselFuel({ tanks }: { tanks: readonly FuelTank[] }) {
   const titleId = useId();

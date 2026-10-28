@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMissionDraft, addMissionWaypoint, missionDistance, distanceNm, canReviewMission, buildGridPlan, missionCoordinates, missionSpeedError, routeDirection } from '../src/lib/vessel/mission.ts';
+import { createMissionDraft, createDeployment, addMissionWaypoint, missionDistance, distanceNm, canReviewMission, buildGridPlan, missionCoordinates, missionSpeedError, routeDirection } from '../src/lib/vessel/mission.ts';
 
 test('distances use nautical miles and the short path across the antimeridian', () => {
   const degree = distanceNm([0, 0], [1, 0]);
@@ -18,11 +18,35 @@ test('route arrows follow leg order and take the short path across the dateline'
   assert.equal(dateline.heading, 90);
   const grid = { origin: [0.01, 0.01], center: [0, 0], width: 100, height: 200, spacing: 10, heading: 0 };
   const plan = buildGridPlan(grid);
-  assert.ok(distanceNm(grid.origin, plan.route[0]) <= distanceNm(grid.origin, plan.route.at(-1)));
+  assert.deepEqual(plan.route, buildGridPlan({ ...grid, origin: null }).route);
   for (let i = 0; i < plan.route.length - 2; i += 2) {
     const heading = routeDirection(plan.route[i], plan.route[i + 1]).heading;
     const next = routeDirection(plan.route[i + 2], plan.route[i + 3]).heading;
     assert.equal(Math.abs(next - heading), 180);
+  }
+});
+
+test('grid rotation sets the starting corner and sweep regardless of vessel position', () => {
+  const grid = { origin: [-0.01, -0.01], center: [0, 0], width: 100, height: 200, spacing: 10, heading: 0 };
+  for (const heading of [0, 180]) {
+    const plan = buildGridPlan({ ...grid, heading });
+    const [start, firstEnd] = plan.route;
+    if (heading === 0) {
+      assert.ok(start[0] < 0 && start[1] < 0);
+      assert.ok(firstEnd[1] > start[1]);
+      assert.ok(plan.route.at(-1)[0] > start[0]);
+    } else {
+      assert.ok(start[0] > 0 && start[1] > 0);
+      assert.ok(firstEnd[1] < start[1]);
+      assert.ok(plan.route.at(-1)[0] < start[0]);
+    }
+    const draft = { ...createMissionDraft(12), type: 'grid', grid: { ...grid, heading } };
+    for (const origin of [[-0.01, -0.01], [0.01, 0.01]]) {
+      assert.deepEqual(buildGridPlan({ ...grid, heading, origin }).route, plan.route);
+      const deployed = createDeployment(draft, origin);
+      assert.deepEqual(deployed.targets, plan.route);
+      assert.deepEqual(deployed.origin, origin);
+    }
   }
 });
 

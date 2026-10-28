@@ -105,7 +105,7 @@ export function MissionPlanner({
   const gridPlan = useMemo(() => buildGridPlan(draft.grid), [draft.grid]);
   const coordinates = useMemo(() => missionCoordinates(draft), [draft]);
   const distance = useMemo(() => missionDistance(draft), [draft]);
-  const speedError = missionSpeedError(draft);
+  const speedError = missionSpeedError(draft, vessel.simulation.maxSpeed);
   const hasRoute = coordinates.length > 1;
   const hasPlannedPoints =
     draft.waypoints.length > 0 || draft.grid.center !== null;
@@ -566,6 +566,7 @@ export function MissionPlanner({
                 <h3 className='text-base font-medium'>Set mission speeds</h3>
                 <p className='mt-1 mb-4 text-xs leading-relaxed text-muted-foreground'>
                   Choose the speed for straight sections and turns.
+                  {' '}Vessel maximum: {vessel.simulation.maxSpeed} kn.
                 </p>
                 <div className='grid grid-cols-2 gap-3'>
                   <MissionNumberField
@@ -573,6 +574,7 @@ export function MissionPlanner({
                     unit='kn'
                     value={draft.speed}
                     min={0.5}
+                    max={vessel.simulation.maxSpeed}
                     step={0.5}
                     onValueChange={speed => update({ speed })}
                     errorId={speedError ? speedErrorId : undefined}
@@ -582,6 +584,7 @@ export function MissionPlanner({
                     unit='kn'
                     value={draft.turnSpeed}
                     min={0.5}
+                    max={vessel.simulation.maxSpeed}
                     step={0.5}
                     onValueChange={turnSpeed => update({ turnSpeed })}
                     errorId={speedError ? speedErrorId : undefined}
@@ -646,7 +649,7 @@ export function MissionPlanner({
           disabled={
             step === 'route'
               ? !routeReady
-              : step !== 'type' && !canReviewMission(draft)
+              : step !== 'type' && !canReviewMission(draft, vessel.simulation.maxSpeed)
           }
           className='flex py-2.5 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40'
           onClick={() => {

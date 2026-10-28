@@ -114,8 +114,8 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   assert.deepEqual(live.data.features[0].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');
   assert.deepEqual(live.data.features[1].geometry.coordinates[0], simulation.getFrame().position, 'remaining route starts at the same live position');
   assert.deepEqual(live.data.features[1].geometry.coordinates[1], navigation.WAYPOINT);
-  for (let i = 0; i < 599; i++) step();
-  assert.ok(snapshots <= 40);
+  for (let i = 0; i < 1199; i++) step();
+  assert.ok(snapshots <= 80);
   assert.ok(history.data.features[0].geometry.coordinates.length > 2, 'sampled track is a native geographic line');
   assert.ok(history.writes < 40, 'history is not rebuilt every frame');
   assert.deepEqual(live.data.features[0].geometry.coordinates[1], simulation.getFrame().position);
