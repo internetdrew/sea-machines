@@ -765,6 +765,8 @@ type MarkerTooltipProps = {
   ref?: Ref<MapLibreGL.Popup>;
   /** Tooltip content */
   children: ReactNode;
+  /** Compact label or a larger bordered information card. */
+  variant?: "default" | "card";
   /** Additional CSS classes for the tooltip container */
   className?: string;
 } & Omit<PopupOptions, "className" | "closeButton" | "closeOnClick">;
@@ -772,6 +774,7 @@ type MarkerTooltipProps = {
 function MarkerTooltip({
   ref,
   children,
+  variant = "default",
   className,
   ...popupOptions
 }: MarkerTooltipProps) {
@@ -826,8 +829,11 @@ function MarkerTooltip({
   return createPortal(
     <div
       className={cn(
-        "bg-foreground text-background pointer-events-none rounded-md px-2 py-1 text-xs text-balance shadow-md",
-        "animate-in fade-in-0 zoom-in-95 duration-200 ease-out",
+        "pointer-events-none shadow-md",
+        "animate-in fade-in-0 zoom-in-95 duration-200 ease-out motion-reduce:animate-none",
+        variant === "card"
+          ? "w-64 max-w-[calc(100vw-24px)] rounded-lg border border-[#5eead4] bg-[#1b2328] px-4 py-3 text-left text-sm text-[#eef2f5] text-wrap"
+          : "bg-foreground text-background rounded-md px-2 py-1 text-xs text-balance",
         className,
       )}
     >

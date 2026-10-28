@@ -102,7 +102,6 @@ export function buildGridPlan(grid: GridDraft): GridPlan {
     const last = toCoordinate(offset, halfHeight);
     route.push(...(i % 2 ? [last, first] : [first, last]));
   }
-  if (grid.origin && distanceNm(grid.origin, route.at(-1)!) < distanceNm(grid.origin, route[0])) route.reverse();
   return { boundary, route, passCount, error: null };
 }
 
