@@ -6,9 +6,10 @@ import {
   INITIAL_CENTER,
   destinationFrom,
 } from '../src/lib/vessel/navigation.ts';
-import { createMissionDraft, distanceNm } from '../src/lib/vessel/mission.ts';
+import { createMissionDraft, distanceNm, missionSpeedError, canReviewMission } from '../src/lib/vessel/mission.ts';
+import { DEMO_PROPULSION } from '../src/lib/vessel/propulsion.ts';
 
-function setup() {
+function setup(propulsion) {
   let time = 0,
     nextId = 0;
   const callbacks = new Map();
@@ -19,7 +20,7 @@ function setup() {
       return nextId;
     },
     cancel: id => callbacks.delete(id),
-  });
+  }, propulsion);
   return {
     simulation,
     callbacks,
@@ -44,6 +45,8 @@ test('idle vessels have no demo target and deploy without teleporting', () => {
   assert.equal(simulation.getFrame().nextWaypoint, null);
   assert.equal(simulation.getFrame().phase, 'idle');
   assert.equal(simulation.getFrame().multiplier, 1);
+  assert.equal(simulation.getFrame().cruiseSpeed, 27);
+  assert.equal(simulation.maxSpeed, 40);
   simulation.setVisible(true);
   simulation.setPlaying(true);
   assert.equal(callbacks.size, 0);
@@ -52,7 +55,7 @@ test('idle vessels have no demo target and deploy without teleporting', () => {
   assert.deepEqual(simulation.getFrame().position, INITIAL_CENTER);
   assert.deepEqual(simulation.getFrame().nextWaypoint, WAYPOINT);
   assert.equal(simulation.getFrame().phase, 'transit');
-  assert.equal(simulation.getFrame().speed, 12);
+  assert.equal(simulation.getFrame().speed, 0);
   assert.equal(callbacks.size, 1);
   draft.waypoints[0] = [0, 0];
   assert.deepEqual(
@@ -79,11 +82,161 @@ test('invalid missions do not start the clock or change vessel state', () => {
     plan([[0, 91]]),
     plan([WAYPOINT], 0),
     plan([WAYPOINT], 12, 13),
+    plan([WAYPOINT], 41),
   ]) {
     assert.equal(simulation.deploy(draft), false);
     assert.equal(simulation.getFrame(), before);
     assert.equal(callbacks.size, 0);
   }
+});
+
+test('speed builds from rest, brakes before arrival, and changes continuously', () => {
+  const { simulation, step } = setup();
+  const destination = destinationFrom(INITIAL_CENTER, 0, 200 / 1852);
+  simulation.setVisible(true);
+  simulation.deploy(plan([destination], 12));
+  let previous = simulation.getFrame();
+  let reachedCruise = false, braked = false;
+  for (let i = 0; i < 1200 && previous.playing; i++) {
+    step(100);
+    const current = simulation.getFrame();
+    assert.ok(Number.isFinite(current.speed));
+    assert.ok(current.distance >= previous.distance && current.distance <= 200 / 1852 + 1e-8);
+    assert.ok(current.speed - previous.speed <= 0.240001);
+    assert.ok(previous.speed - current.speed <= 0.080001);
+    if (current.speed === 12) reachedCruise = true;
+    if (current.playing && current.speed < previous.speed) braked = true;
+    if (i === 9) {
+      assert.ok(current.speed > 0 && current.speed < 2.4, 'throttle builds instead of applying full thrust immediately');
+      assert.ok(current.distance > 0 && current.distance < 1.2 / 3600);
+    }
+    previous = current;
+  }
+  assert.ok(reachedCruise && braked);
+  assert.equal(previous.arrived, true);
+  assert.equal(previous.speed, 0);
+  assert.deepEqual(previous.position, destination);
+});
+
+test('lowering cruise speed brakes gradually and pause preserves the simulated velocity', () => {
+  const { simulation, step } = setup();
+  simulation.setVisible(true);
+  simulation.deploy(plan());
+  for (let i = 0; i < 100; i++) step(250);
+  assert.equal(simulation.getFrame().speed, 12);
+  simulation.setSpeed(4);
+  assert.equal(simulation.getFrame().speed, 12);
+  step(250);
+  const speed = simulation.getFrame().speed;
+  assert.ok(Math.abs(speed - 11.8) < 1e-8);
+  const position = simulation.getFrame().position;
+  simulation.setPlaying(false);
+  step(60000);
+  assert.deepEqual(simulation.getFrame().position, position);
+  simulation.setPlaying(true);
+  assert.equal(simulation.getFrame().speed, speed);
+  for (let i = 0; i < 50; i++) step(250);
+  assert.ok(Math.abs(simulation.getFrame().speed - 4) < 1e-8);
+});
+
+test('short legs brake without reaching cruise and playback rate uses simulated time', () => {
+  const target = destinationFrom(INITIAL_CENTER, 90, 5 / 1852);
+  const slow = setup(), fast = setup();
+  for (const run of [slow, fast]) {
+    run.simulation.setVisible(true);
+    run.simulation.deploy(plan([target], 12));
+  }
+  fast.simulation.setMultiplier(10);
+  for (let i = 0; i < 10; i++) slow.step(100);
+  fast.step(100);
+  assert.ok(Math.abs(slow.simulation.getFrame().distance - fast.simulation.getFrame().distance) < 1e-9);
+  assert.ok(Math.abs(slow.simulation.getFrame().speed - fast.simulation.getFrame().speed) < 1e-9);
+  let peak = 0;
+  for (let i = 0; i < 1000 && slow.simulation.getFrame().playing; i++) {
+    slow.step(100);
+    peak = Math.max(peak, slow.simulation.getFrame().speed);
+  }
+  assert.ok(peak > 0 && peak < 12);
+  assert.equal(slow.simulation.getFrame().arrived, true);
+  assert.deepEqual(slow.simulation.getFrame().position, target);
+});
+
+test('propulsion builds throttle, pushes harder at low speed, and tapers at high speed', () => {
+  const { simulation, step } = setup();
+  simulation.setVisible(true);
+  const target = destinationFrom(INITIAL_CENTER, 0, 10);
+  simulation.deploy(plan([target], 40));
+  const times = new Map();
+  let lowPush = 0, highPush = 0, previous = 0;
+  for (let i = 1; i <= 1000; i++) {
+    step(100);
+    const speed = simulation.getFrame().speed;
+    for (const threshold of [5, 12, 20, 39]) {
+      if (speed >= threshold && !times.has(threshold)) times.set(threshold, i / 10);
+    }
+    if (previous >= 5 && previous <= 10) lowPush = Math.max(lowPush, speed - previous);
+    if (previous >= 35) highPush = Math.max(highPush, speed - previous);
+    assert.ok(speed <= simulation.maxSpeed);
+    previous = speed;
+  }
+  assert.ok(times.get(5) > 2 && times.get(5) < 5);
+  assert.ok(times.get(12) > times.get(5) && times.get(12) < 10);
+  assert.ok(times.get(20) > times.get(12) + 3);
+  assert.ok(times.get(39) > times.get(20) + 20);
+  assert.ok(lowPush > highPush * 2);
+});
+
+test('a vessel profile limits mission requests and live speed commands independently', () => {
+  const { simulation, step } = setup({ ...DEMO_PROPULSION, maxSpeed: 20 });
+  simulation.setVisible(true);
+  assert.equal(simulation.maxSpeed, 20);
+  assert.equal(simulation.deploy(plan([WAYPOINT], 21)), false);
+  assert.equal(simulation.getFrame().mission, null);
+  assert.equal(simulation.deploy(plan([destinationFrom(INITIAL_CENTER, 0, 10)], 12)), true);
+  simulation.setSpeed(200);
+  assert.equal(simulation.getFrame().cruiseSpeed, 20);
+  assert.equal(simulation.getFrame().speed, 0);
+  for (let i = 0; i < 1000; i++) {
+    step(100);
+    assert.ok(simulation.getFrame().speed <= 20);
+  }
+  assert.ok(simulation.getFrame().speed > 19);
+});
+
+test('different vessels supply their own draft defaults and planning limits', () => {
+  const small = setup({ ...DEMO_PROPULSION, cruiseSpeed: 8, maxSpeed: 16 });
+  const fast = setup({ ...DEMO_PROPULSION, cruiseSpeed: 32, maxSpeed: 55 });
+  assert.equal(small.simulation.getSnapshot().cruiseSpeed, 8);
+  assert.equal(fast.simulation.getSnapshot().cruiseSpeed, 32);
+  const draft = plan([WAYPOINT], 45);
+  assert.ok(missionSpeedError(draft, small.simulation.maxSpeed));
+  assert.equal(canReviewMission(draft, small.simulation.maxSpeed), false);
+  assert.equal(small.simulation.deploy(draft), false);
+  assert.equal(missionSpeedError(draft, fast.simulation.maxSpeed), null);
+  assert.equal(canReviewMission(draft, fast.simulation.maxSpeed), true);
+  assert.equal(fast.simulation.deploy(draft), true);
+  small.simulation.setSpeed(100);
+  fast.simulation.setSpeed(100);
+  assert.equal(small.simulation.getFrame().cruiseSpeed, 16);
+  assert.equal(fast.simulation.getFrame().cruiseSpeed, 55);
+});
+
+test('arrival cuts thrust to coast before applying the stronger active brake', () => {
+  const { simulation, step } = setup();
+  simulation.setVisible(true);
+  simulation.deploy(plan([destinationFrom(INITIAL_CENTER, 0, 200 / 1852)], 12));
+  let previous = simulation.getFrame();
+  let coasted = false, activelyBraked = false;
+  for (let i = 0; i < 1000 && previous.playing; i++) {
+    step(100);
+    const frame = simulation.getFrame();
+    const drop = previous.speed - frame.speed;
+    if (frame.speed > 5 && drop > 0.0001 && drop < 0.07) coasted = true;
+    if (drop > 0.079 && frame.playing) activelyBraked = true;
+    previous = frame;
+  }
+  assert.ok(coasted && activelyBraked);
+  assert.equal(previous.arrived, true);
 });
 
 test('one frame clock drives movement; React snapshots remain throttled', () => {
@@ -103,7 +256,7 @@ test('one frame clock drives movement; React snapshots remain throttled', () => 
   for (let i = 1; i < 600; i++) step();
   assert.equal(frames - baselineFrames, 600);
   assert.ok(snapshots - baselineSnapshots <= 40);
-  assert.ok(Math.abs(simulation.getFrame().distance - 1 / 3) < 1e-9);
+  assert.ok(simulation.getFrame().distance > 0.3 && simulation.getFrame().distance < 1 / 3, 'startup covers less distance than instant cruise');
   assert.equal(callbacks.size, 1);
   assert.ok(simulation.getFrame().track.length < 40);
 });
@@ -116,6 +269,12 @@ test('pause, visibility, and reset stop scheduling without catch-up movement', (
   step(100);
   simulation.setPlaying(false);
   const paused = simulation.getFrame().distance;
+  const control = setup();
+  control.simulation.setVisible(true);
+  control.simulation.setMultiplier(10);
+  control.simulation.deploy(plan());
+  control.step(100);
+  control.step(100);
   assert.equal(simulation.getFrame().speed, 0);
   assert.equal(callbacks.size, 0);
   step(60000);
@@ -127,7 +286,7 @@ test('pause, visibility, and reset stop scheduling without catch-up movement', (
   simulation.setVisible(true);
   step(100);
   assert.ok(
-    Math.abs(simulation.getFrame().distance - paused - (12 * 10 * 0.1) / 3600) <
+    Math.abs(simulation.getFrame().distance - control.simulation.getFrame().distance) <
       1e-9,
   );
   simulation.reset();
@@ -174,7 +333,8 @@ test('all waypoints are visited in order, with turn-speed zones and exact arriva
   assert.ok(
     phases.has('transit') && phases.has('mission') && phases.has('complete'),
   );
-  assert.ok(speeds.has(6) && speeds.has(2) && speeds.has(0));
+  assert.ok(Math.max(...speeds) <= 6);
+  assert.ok([...speeds].some(speed => Math.abs(speed - 2) < 0.01) && speeds.has(0));
   assert.deepEqual([...targets].sort(), [0, 1, 2, 3]);
   assert.deepEqual(frame.position, last);
   assert.equal(frame.remaining, 0);
@@ -280,7 +440,8 @@ test('speed commands preserve the clock and reset permits a fresh deployment', (
   simulation.setMultiplier(60);
   assert.deepEqual([...callbacks.keys()], pending);
   step(100);
-  assert.ok(Math.abs(simulation.getFrame().distance - 0.04) < 1e-9);
+  assert.ok(simulation.getFrame().distance > 0 && simulation.getFrame().distance < 0.04);
+  assert.ok(simulation.getFrame().speed > 0 && simulation.getFrame().speed < 24);
   for (let i = 0; i < 100; i++) step(100);
   const frame = simulation.getFrame();
   assert.ok(Math.abs(frame.distance - 2) < 1e-9);

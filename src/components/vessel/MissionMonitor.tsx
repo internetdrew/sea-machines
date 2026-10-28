@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { Button } from '@base-ui/react/button';
 import { Drawer } from '@base-ui/react/drawer';
 import { Progress } from '@base-ui/react/progress';
+import { motion, useReducedMotion } from 'motion/react';
 import { X } from 'lucide-react';
 import { distanceNm } from '@/lib/vessel/mission';
 import { getMissionPhaseLabel, getVesselActivity, isMissionInProgress } from '@/lib/vessel/vessel';
@@ -11,6 +12,7 @@ import { VesselFuel } from './VesselFuel';
 import { VesselTelemetry } from './VesselTelemetry';
 
 export function MissionMonitor({ vessel }: { vessel: Vessel }) {
+  const reducedMotion = useReducedMotion();
   const snapshot = useSyncExternalStore(vessel.simulation.subscribe, vessel.simulation.getSnapshot);
   const title = useRef<HTMLHeadingElement | null>(null);
   const attachScrollArea = useCallback((element: HTMLDivElement | null) => {
@@ -52,7 +54,17 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
             <Progress.Label className='text-muted-foreground'>{snapshot.phase === 'aborted' ? 'Progress before abort' : 'Route progress'}</Progress.Label>
             <Progress.Value>{() => `${Math.round(percent)}%`}</Progress.Value>
           </div>
-          <Progress.Track className='h-1.5 overflow-hidden rounded-full bg-muted'><Progress.Indicator className={`h-full rounded-full ${snapshot.phase === 'aborted' ? 'bg-slate-400' : 'bg-teal-600'}`} /></Progress.Track>
+          <Progress.Track className='h-1.5 overflow-hidden rounded-full bg-muted'>
+            <Progress.Indicator
+              style={{ width: '100%' }}
+              className={`h-full origin-left rounded-full ${snapshot.phase === 'aborted' ? 'bg-neutral-400' : 'bg-teal-600'}`}
+              render={<motion.div
+                initial={false}
+                animate={{ transform: `scaleX(${percent / 100})` }}
+                transition={{ duration: reducedMotion ? 0 : 0.25, ease: 'linear' }}
+              />}
+            />
+          </Progress.Track>
         </Progress.Root>
         <p className='mt-2 text-[11px] text-muted-foreground'>{snapshot.distance.toFixed(2)} of {total.toFixed(2)} nm travelled</p>
         <dl className='mt-4 grid grid-cols-2 gap-3'>

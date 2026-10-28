@@ -24,19 +24,28 @@ export function VesselHoverCard({ vessel, snapshot }: { vessel: Vessel; snapshot
   });
 
   return <>
-    <p className='font-bold tracking-tight'>{vessel.id} {vessel.name}</p>
-    <p className='mt-1 font-semibold text-[#5eead4]'>
-      {active ? `${snapshot.playing ? 'On mission' : 'Mission paused'} · ${progress}%`
-        : snapshot.phase === 'complete' ? 'Mission complete'
+    <p className='font-semibold tracking-tight'>{vessel.id} {vessel.name}</p>
+    <p className='mt-1 text-xs font-medium text-[#5eead4]'>
+      {active ? snapshot.playing ? 'On mission' : 'Mission paused'
         : snapshot.phase === 'aborted' ? 'Mission aborted' : 'Idle'}
     </p>
-    {active && <div className='mt-1 flex items-center justify-between gap-4 text-xs'>
-      <span className='text-[#aab6bf]'>Next waypoint</span>
-      <span className='tabular-nums'>{minutes === null ? 'ETA —' : `ETA ~${minutes} min`}</span>
-    </div>}
-    {warnings.length > 0 && <div className='mt-2 border-t border-[#46535c] pt-2'>
-      {warnings.map(tank => <p key={tank.name} className={`flex items-center gap-2 text-xs font-medium ${tank.color}`}>
-        <TriangleAlert aria-hidden='true' className='size-4 shrink-0' />
+    {active && <>
+      <div className='mt-2 flex items-center justify-between gap-4 text-xs'>
+        <span className='text-neutral-400'>Mission progress</span>
+        <span className='tabular-nums'>{progress}%</span>
+      </div>
+      <p className='mt-1 text-xs text-neutral-400'>
+      Next waypoint{' '}
+      <span className='tabular-nums'>
+        {!snapshot.playing
+          ? snapshot.nextWaypoint ? <span className='text-neutral-100'>{snapshot.remaining.toFixed(2)} nm away</span> : '—'
+          : minutes === null ? '· calculating ETA' : <span className='text-neutral-100'>in ~{minutes} min</span>}
+      </span>
+      </p>
+    </>}
+    {warnings.length > 0 && <div className='mt-2 border-t border-white/15 pt-2'>
+      {warnings.map(tank => <p key={tank.name} className={`flex items-center gap-2 text-xs ${tank.color}`}>
+        <TriangleAlert aria-hidden='true' className='size-3.5 shrink-0' />
         <span>{tank.name} fuel {tank.percent}%</span>
       </p>)}
     </div>}

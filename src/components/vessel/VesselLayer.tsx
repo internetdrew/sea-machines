@@ -63,7 +63,9 @@ export function VesselLayer({
     simulation.getSnapshot,
   );
 
-  const status = getVesselActivity(snapshot);
+  const status = snapshot.arrived
+    ? { label: 'Idle', colors: 'bg-neutral-200 text-neutral-700' }
+    : getVesselActivity(snapshot);
   const missionActive = isMissionInProgress(snapshot);
 
   useEffect(() => {
@@ -172,6 +174,7 @@ export function VesselLayer({
         <MarkerTooltip
           ref={tooltip}
           variant='card'
+          placement='beside'
           offset={74}
           subpixelPositioning
         >
@@ -232,7 +235,7 @@ export function VesselLayer({
               </div>
 
               <VesselTelemetry snapshot={snapshot} />
-              {snapshot.mission && getMissionPhaseLabel(snapshot) && (
+              {snapshot.mission && !snapshot.arrived && getMissionPhaseLabel(snapshot) && (
                 <p className='mt-2 text-xs text-muted-foreground'>
                   {getMissionPhaseLabel(snapshot)}
                 </p>

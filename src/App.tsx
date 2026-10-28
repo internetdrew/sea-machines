@@ -11,7 +11,7 @@ import { useVesselSimulation } from '@/lib/vessel/use-vessel-simulation';
 import { INITIAL_CENTER } from '@/lib/vessel/navigation';
 
 function App() {
-  const { simulation } = useVesselSimulation();
+  const { simulation } = useVesselSimulation(DEMO_VESSEL.propulsion);
   const vessels = useMemo(() => [{ ...DEMO_VESSEL, simulation }], [simulation]);
   const [missionDrawer] = useState(() =>
     Drawer.createHandle<MissionDrawerPayload>(),

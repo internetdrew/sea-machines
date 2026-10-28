@@ -118,15 +118,16 @@ export function missionDistance(draft: MissionDraft) {
   return distance;
 }
 
-export function missionSpeedError(draft: MissionDraft): string | null {
+export function missionSpeedError(draft: MissionDraft, maxSpeed = Infinity): string | null {
   if (draft.speed === null || !Number.isFinite(draft.speed) || draft.speed <= 0) return 'Enter a straight-line speed greater than 0 kn.';
+  if (draft.speed > maxSpeed) return `Straight-line speed must not exceed the vessel maximum of ${maxSpeed} kn.`;
   if (draft.turnSpeed === null || !Number.isFinite(draft.turnSpeed) || draft.turnSpeed <= 0) return 'Enter a turn speed greater than 0 kn.';
   if (draft.turnSpeed > draft.speed) return 'Turn speed must not exceed straight-line speed.';
   return null;
 }
 
-export function canReviewMission(draft: MissionDraft) {
-  return !missionSpeedError(draft) && missionCoordinates(draft).length > 1 && missionDistance(draft) > 0;
+export function canReviewMission(draft: MissionDraft, maxSpeed = Infinity) {
+  return !missionSpeedError(draft, maxSpeed) && missionCoordinates(draft).length > 1 && missionDistance(draft) > 0;
 }
 
 export type DeployedMission = Readonly<{
@@ -140,8 +141,8 @@ export type DeployedMission = Readonly<{
 }>;
 
 /** Snapshot a validated plan, using the live vessel position for its transit leg. */
-export function createDeployment(draft: MissionDraft, position: Coordinate): DeployedMission | null {
-  if (missionSpeedError(draft) || !position.every(Number.isFinite) || Math.abs(position[1]) > 85) return null;
+export function createDeployment(draft: MissionDraft, position: Coordinate, maxSpeed = Infinity): DeployedMission | null {
+  if (missionSpeedError(draft, maxSpeed) || !position.every(Number.isFinite) || Math.abs(position[1]) > 85) return null;
   const grid = draft.type === 'grid' ? buildGridPlan({ ...draft.grid, origin: [...position] }) : null;
   if (grid?.error) return null;
   const planned = grid ? grid.route : draft.waypoints;

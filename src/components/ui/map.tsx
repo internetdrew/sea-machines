@@ -23,6 +23,7 @@ import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { animateAttributionCollapse } from "@/lib/attribution-motion";
+import { placeMapTooltip } from "@/lib/map-tooltip-placement";
 
 type MapLibreModule = typeof MapLibreGL;
 
@@ -767,6 +768,8 @@ type MarkerTooltipProps = {
   children: ReactNode;
   /** Compact label or a larger bordered information card. */
   variant?: "default" | "card";
+  /** Prefer beside the marker, with viewport-aware vertical fallback. */
+  placement?: "auto" | "beside";
   /** Additional CSS classes for the tooltip container */
   className?: string;
 } & Omit<PopupOptions, "className" | "closeButton" | "closeOnClick">;
@@ -775,6 +778,7 @@ function MarkerTooltip({
   ref,
   children,
   variant = "default",
+  placement = "auto",
   className,
   ...popupOptions
 }: MarkerTooltipProps) {
@@ -787,6 +791,7 @@ function MarkerTooltip({
     const tooltipInstance = new Popup({
       offset: 16,
       ...popupOptions,
+      ...(placement === "beside" ? { anchor: "center" as const } : {}),
       closeOnClick: true,
       closeButton: false,
     }).setMaxWidth("none");
@@ -802,29 +807,59 @@ function MarkerTooltip({
 
     tooltip.setDOMContent(container);
 
+    let side: ReturnType<typeof placeMapTooltip>["side"] | undefined;
+    let lastOffset: [number, number] | undefined;
+    let preferredSide: "left" | "right" = "right";
+    const updatePlacement = () => {
+      if (placement !== "beside" || !tooltip.isOpen()) return;
+      const point = map.project(tooltip.getLngLat());
+      const content = container.firstElementChild as HTMLElement | null;
+      if (!content) return;
+      const result = placeMapTooltip({
+        x: point.x, y: point.y,
+        width: content.offsetWidth, height: content.offsetHeight,
+        viewportWidth: map.getContainer().clientWidth,
+        viewportHeight: map.getContainer().clientHeight,
+        gap: typeof offset === "number" ? offset : 16,
+        preferredSide, previousSide: side,
+      });
+      side = result.side;
+      if (!lastOffset || result.offset.some((value, index) => Math.abs(value - lastOffset![index]) > 0.1)) {
+        lastOffset = result.offset;
+        tooltip.setOffset(result.offset);
+      }
+    };
+
     const handleMouseEnter = () => {
+      side = undefined;
+      lastOffset = undefined;
+      // Place the summary opposite the vessel's screen-relative forward direction.
+      preferredSide = Math.sin((marker.getRotation() - map.getBearing()) * Math.PI / 180) > 0 ? "left" : "right";
       tooltip.setLngLat(marker.getLngLat()).addTo(map);
+      updatePlacement();
     };
     const handleMouseLeave = () => tooltip.remove();
 
     marker.getElement()?.addEventListener("mouseenter", handleMouseEnter);
     marker.getElement()?.addEventListener("mouseleave", handleMouseLeave);
+    map.on("render", updatePlacement);
 
     return () => {
       marker.getElement()?.removeEventListener("mouseenter", handleMouseEnter);
       marker.getElement()?.removeEventListener("mouseleave", handleMouseLeave);
+      map.off("render", updatePlacement);
       tooltip.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map]);
+  }, [map, marker, tooltip, container, placement, offset]);
 
   // Sync tooltip options when they change.
   useEffect(() => {
-    tooltip.setOffset(offset ?? 16);
+    if (placement !== "beside") tooltip.setOffset(offset ?? 16);
     if (maxWidth) {
       tooltip.setMaxWidth(maxWidth);
     }
-  }, [tooltip, offset, maxWidth]);
+  }, [tooltip, offset, maxWidth, placement]);
 
   return createPortal(
     <div
@@ -832,7 +867,7 @@ function MarkerTooltip({
         "pointer-events-none shadow-md",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-out motion-reduce:animate-none",
         variant === "card"
-          ? "w-64 max-w-[calc(100vw-24px)] rounded-lg border border-[#5eead4] bg-[#1b2328] px-4 py-3 text-left text-sm text-[#eef2f5] text-wrap"
+          ? "w-60 max-w-[calc(100vw-24px)] rounded-lg border border-white/15 bg-neutral-900 px-3 py-3 text-left text-sm text-neutral-100 text-wrap"
           : "bg-foreground text-background rounded-md px-2 py-1 text-xs text-balance",
         className,
       )}
