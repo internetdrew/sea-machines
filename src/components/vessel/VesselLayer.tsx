@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import { Popover } from '@base-ui/react/popover';
 import { X } from 'lucide-react';
 import { VesselFuel } from './VesselFuel';
 import { VesselTelemetry } from './VesselTelemetry';
 import { VesselHoverCard } from './VesselHoverCard';
 import { ActiveMissionLayer } from './ActiveMissionLayer';
-import { TextSwap } from '@/components/ui/text-swap';
 import type { Marker, Popup } from 'maplibre-gl';
 import {
   MapMarker,
@@ -16,14 +14,15 @@ import {
   MarkerTooltip,
   useMap,
 } from '@/components/ui/map';
-import boat from '@/assets/boat.svg';
-import { INITIAL_HEADING, INITIAL_POSITION } from '@/lib/vessel/navigation';
+import boat from '@/assets/boat.svg?raw';
+import selkie from '@/assets/patrol-boat.svg?raw';
 import { createVesselRenderer } from './renderer';
 import type { VesselDisplayOptions } from './renderer';
 import { Drawer } from '@base-ui/react/drawer';
 import type { MissionDrawerPayload } from './MissionDrawer';
 import {
-  getMissionPhaseLabel,
+  getVesselDisplayName,
+  getVesselIdentity,
   getVesselActivity,
   isMissionInProgress,
 } from '@/lib/vessel/vessel';
@@ -44,16 +43,14 @@ export function VesselLayer({
 }: Props) {
   const { map, mapLib, isLoaded } = useMap();
   const { simulation } = vessel;
+  const [initialFrame] = useState(() => simulation.getFrame());
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [markerHovered, setMarkerHovered] = useState(false);
   const [markerFocused, setMarkerFocused] = useState(false);
   const openingDrawer = useRef(false);
   const markerButton = useRef<HTMLButtonElement | null>(null);
-  const reducedMotion = useReducedMotion();
-  const layoutTransition = {
-    duration: reducedMotion ? 0 : 0.2,
-    ease: [0.2, 0, 0, 1] as const,
-  };
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const marker = useRef<Marker | null>(null);
   const missionMarker = useRef<Marker | null>(null);
   const tooltip = useRef<Popup | null>(null);
@@ -63,9 +60,6 @@ export function VesselLayer({
     simulation.getSnapshot,
   );
 
-  const status = snapshot.arrived
-    ? { label: 'Idle', colors: 'bg-neutral-200 text-neutral-700' }
-    : getVesselActivity(snapshot);
   const missionActive = isMissionInProgress(snapshot);
 
   useEffect(() => {
@@ -105,14 +99,20 @@ export function VesselLayer({
     <Popover.Root
       open={popoverOpen}
       onOpenChange={open => {
-        if (open) openingDrawer.current = false;
+        if (open) {
+          openingDrawer.current = false;
+          setDetailsOpen(false);
+          setCopyState('idle');
+          tooltip.current?.remove();
+        }
         setPopoverOpen(open);
       }}
     >
       <ActiveMissionLayer vesselId={vessel.id} frame={snapshot} />
       <MapMarker
         ref={missionMarker}
-        {...INITIAL_POSITION}
+        longitude={initialFrame.position[0]}
+        latitude={initialFrame.position[1]}
         rotationAlignment='viewport'
         pitchAlignment='viewport'
         subpixelPositioning
@@ -141,8 +141,9 @@ export function VesselLayer({
       </MapMarker>
       <MapMarker
         ref={marker}
-        {...INITIAL_POSITION}
-        rotation={INITIAL_HEADING}
+        longitude={initialFrame.position[0]}
+        latitude={initialFrame.position[1]}
+        rotation={initialFrame.heading}
         rotationAlignment='map'
         pitchAlignment='map'
         subpixelPositioning
@@ -150,29 +151,32 @@ export function VesselLayer({
         <MarkerContent>
           <Popover.Trigger
             ref={markerButton}
-            aria-label={`Show ${vessel.id} ${vessel.name} details`}
+            aria-label={`Show ${getVesselIdentity(vessel)} actions`}
             onPointerEnter={event => {
               if (event.pointerType === 'mouse' || event.pointerType === 'pen')
                 setMarkerHovered(true);
             }}
             onPointerLeave={() => setMarkerHovered(false)}
             onPointerCancel={() => setMarkerHovered(false)}
-            onFocus={event =>
-              setMarkerFocused(event.currentTarget.matches(':focus-visible'))
-            }
+            onFocus={event => {
+              const focused = event.currentTarget.matches(':focus-visible');
+              setMarkerFocused(focused);
+            }}
             onBlur={() => setMarkerFocused(false)}
             className='block cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring'
           >
-            <img
-              src={boat}
-              alt=''
+            <svg
+              data-vessel-hull={vessel.id}
+              viewBox='0 0 100 220'
+              aria-hidden='true'
+              dangerouslySetInnerHTML={{ __html: (vessel.series.silhouette === 'selkie' ? selkie : boat).replace(/<svg[^>]*>|<\/svg>|<title>[\s\S]*?<\/title>/g, '') }}
               className='h-24 w-auto drop-shadow-lg'
-              draggable={false}
             />
           </Popover.Trigger>
         </MarkerContent>
         <MarkerTooltip
           ref={tooltip}
+          className={popoverOpen ? 'hidden' : undefined}
           variant='card'
           placement='beside'
           offset={74}
@@ -193,7 +197,7 @@ export function VesselLayer({
               className='relative w-64 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
             >
               <Popover.Close
-                aria-label='Close vessel details'
+                aria-label='Close vessel actions'
                 className='absolute top-2 right-2 inline-flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-150 motion-reduce:transition-none'
               >
                 <X className='size-3.5' />
@@ -203,45 +207,15 @@ export function VesselLayer({
               </Popover.Title>
 
               <Popover.Description className='text-xs text-muted-foreground'>
-                {vessel.name}
+                {getVesselDisplayName(vessel)}
               </Popover.Description>
 
-              <div className='flex text-[11px] items-center gap-2 mt-2 select-none'>
-                <motion.span
-                  layout={!reducedMotion}
-                  layoutDependency={status.label}
-                  transition={{ layout: layoutTransition }}
-                  style={{ borderRadius: 9999 }}
-                  className={`inline-flex px-3 py-0.5 font-medium ${status.colors}`}
-                  role='status'
-                >
-                  <motion.span
-                    layout={reducedMotion ? false : 'position'}
-                    transition={{ layout: layoutTransition }}
-                  >
-                    <TextSwap text={status.label} />
-                  </motion.span>
-                </motion.span>
-                {/* Health badge pending a defined readiness/health model.
-                <motion.span
-                  layout={reducedMotion ? false : 'position'}
-                  layoutDependency={status.label}
-                  transition={{ layout: layoutTransition }}
-                  className='px-3 py-0.5 bg-green-200/80 rounded-full'
-                >
-                  Ready
-                </motion.span>
-                */}
-              </div>
-
-              <VesselTelemetry snapshot={snapshot} />
-              {snapshot.mission && !snapshot.arrived && getMissionPhaseLabel(snapshot) && (
-                <p className='mt-2 text-xs text-muted-foreground'>
-                  {getMissionPhaseLabel(snapshot)}
-                </p>
-              )}
-              <VesselFuel tanks={vessel.fuelTanks} />
-
+              {detailsOpen ? <>
+                <button type='button' onClick={() => setDetailsOpen(false)} className='mt-3 cursor-pointer text-xs text-muted-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring'>Back to actions</button>
+                <p className='mt-3 text-xs text-muted-foreground'>{getVesselActivity(snapshot).label}</p>
+                <VesselTelemetry snapshot={snapshot} />
+                <VesselFuel tanks={vessel.fuelTanks} />
+              </> : <>
               <Drawer.Trigger
                 handle={missionDrawer}
                 payload={{ vesselId: vessel.id, returnFocus: markerButton }}
@@ -260,6 +234,19 @@ export function VesselLayer({
                   ? 'View mission'
                   : 'Plan a mission'}
               </Drawer.Trigger>
+              <div className='mt-2 flex flex-col gap-1 border-t pt-2'>
+                <button type='button' onClick={() => setDetailsOpen(true)} className='cursor-pointer rounded px-2 py-2 text-left text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'>View vessel details</button>
+                <button type='button' onClick={async () => {
+                  try {
+                    const [longitude, latitude] = simulation.getFrame().position;
+                    await navigator.clipboard.writeText(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+                    setCopyState('copied');
+                  } catch { setCopyState('error'); }
+                }} className='cursor-pointer rounded px-2 py-2 text-left text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'>Copy position</button>
+                <p role='status' className='px-2 text-[11px] text-muted-foreground'>{copyState === 'copied' ? 'Position copied (latitude, longitude)' : copyState === 'error' ? 'Unable to copy. Position is available in vessel details.' : ''}</p>
+              </div>
+              </>}
+
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>

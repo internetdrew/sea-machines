@@ -532,3 +532,18 @@ test('paused survey missions abort without changing the stop location', () => {
   );
   assert.deepEqual(simulation.getFrame().mission.origin, paused.position);
 });
+
+test('a second vessel starts and resets east without moving the original vessel', () => {
+  const original = createVesselSimulation();
+  const east = destinationFrom(INITIAL_CENTER, 90, 1);
+  const second = createVesselSimulation(undefined, DEMO_PROPULSION, east, 270);
+  assert.deepEqual(second.getFrame().position, east);
+  assert.equal(second.getFrame().heading, 270);
+  assert.ok(second.getFrame().position[0] > original.getFrame().position[0]);
+  second.deploy(plan([destinationFrom(east, 90, 1)]));
+  second.reset();
+  assert.deepEqual(second.getFrame().position, east);
+  assert.equal(second.getFrame().heading, 270);
+  assert.deepEqual(original.getFrame().position, INITIAL_CENTER);
+  assert.equal(original.getFrame().mission, null);
+});

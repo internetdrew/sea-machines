@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Fleet identity — six label studies</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #11171b;
+        color: #e9edef;
+        --yellow: #f5e835;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 36px;
+      }
+      header {
+        max-width: 1600px;
+        margin: auto;
+      }
+      .eyebrow {
+        font:
+          11px ui-monospace,
+          monospace;
+        letter-spacing: 2px;
+        color: #a0adb5;
+      }
+      h1 {
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -1px;
+        margin: 12px 0;
+      }
+      header p {
+        color: #a7b3bb;
+        max-width: 760px;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 24px;
+        padding: 18px 0 26px;
+        font-size: 12px;
+        color: #c8d0d5;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      input {
+        accent-color: var(--yellow);
+      }
+      input[type='range'] {
+        width: 130px;
+      }
+      output {
+        font:
+          11px ui-monospace,
+          monospace;
+        min-width: 32px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        max-width: 1600px;
+        margin: auto;
+      }
+      article {
+        border: 1px solid #364149;
+        border-radius: 9px;
+        overflow: hidden;
+        background: #192126;
+      }
+      .scene {
+        height: 290px;
+        position: relative;
+        overflow: hidden;
+        background: #2b353b;
+      }
+      .chart {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        inset: 0;
+      }
+      .vessel {
+        position: absolute;
+        width: 48px;
+        height: 106px;
+        left: var(--x);
+        top: var(--y);
+        transform: translate(-50%, -50%);
+      }
+      .hull {
+        width: 100%;
+        height: 100%;
+        transform: rotate(var(--heading));
+      }
+      .hull svg {
+        width: 100%;
+        height: 100%;
+      }
+      .label {
+        position: absolute;
+        white-space: nowrap;
+        font:
+          600 12px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        letter-spacing: 0.4px;
+        line-height: 18px;
+        color: #fff;
+      }
+      .plain .label {
+        left: 50%;
+        top: calc(100% + 12px);
+        transform: translateX(-50%);
+        text-shadow:
+          0 1px 2px #000,
+          1px 0 2px #000,
+          -1px 0 2px #000;
+      }
+      .badge .label {
+        top: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 3px 8px;
+        background: #10171eef;
+        border: 1px solid #64727c;
+        border-radius: 4px;
+      }
+      .badge .label:before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        margin: 0 7px 2px 0;
+        background: var(--yellow);
+        border-radius: 50%;
+      }
+      .tab .label {
+        left: calc(100% + 30px);
+        top: 50%;
+        transform: translateY(-50%);
+        padding: 2px 7px;
+        border-left: 2px solid var(--yellow);
+        background: #182126ee;
+      }
+      .tab .label:before {
+        content: '';
+        position: absolute;
+        right: 100%;
+        width: 15px;
+        top: 50%;
+        height: 1px;
+        background: #b9c5ca;
+      }
+      .callout .label {
+        left: calc(100% + 34px);
+        top: -6px;
+        border-bottom: 1px solid #a7b5bf;
+        padding: 0 4px 4px;
+        text-shadow: 0 1px 2px #000;
+      }
+      .callout .label:before {
+        content: '';
+        position: absolute;
+        width: 48px;
+        height: 1px;
+        background: #a7b5bf;
+        right: 100%;
+        top: 100%;
+        transform: rotate(-40deg);
+        transform-origin: 100% 0;
+      }
+      .inside .label {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--yellow);
+        font-size: 11px;
+        letter-spacing: 0;
+        text-shadow:
+          0 0 3px #000,
+          0 0 3px #000;
+      }
+      .card .label {
+        left: 50%;
+        top: calc(100% + 10px);
+        transform: translateX(-50%);
+        background: #11191fed;
+        border: 1px solid #52616b;
+        border-radius: 4px;
+        padding: 6px 9px;
+      }
+      .card .label small {
+        display: block;
+        font:
+          9px Arial,
+          sans-serif;
+        letter-spacing: 1px;
+        color: #a6b4bc;
+        margin-top: 2px;
+      }
+      .ring {
+        fill: none;
+        stroke: #78999e;
+        stroke-opacity: 0.19;
+        stroke-width: 1;
+      }
+      .rings-off .ring {
+        display: none;
+      }
+      .caption {
+        padding: 18px 19px 20px;
+        min-height: 126px;
+      }
+      .title {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0;
+      }
+      .number {
+        font:
+          11px ui-monospace,
+          monospace;
+        color: #7f929e;
+        margin-right: 9px;
+      }
+      .recommend {
+        font:
+          9px ui-monospace,
+          monospace;
+        color: var(--yellow);
+        border: 1px solid #676438;
+        padding: 3px 5px;
+        border-radius: 3px;
+      }
+      .caption p {
+        font-size: 12px;
+        line-height: 1.65;
+        color: #a7b4bd;
+        margin: 10px 0 0;
+      }
+      .note {
+        max-width: 1600px;
+        margin: 24px auto 0;
+        color: #7f929e;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      a {
+        color: #c7d1d8;
+      }
+      button {
+        font: 12px Arial;
+        background: #222e36;
+        color: #dfe6ea;
+        border: 1px solid #52616b;
+        border-radius: 4px;
+        padding: 7px 11px;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--yellow);
+        outline-offset: 4px;
+      }
+      @media (max-width: 1150px) {
+        main {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 740px) {
+        body {
+          padding: 22px 14px;
+        }
+        main {
+          grid-template-columns: 1fr;
+        }
+        h1 {
+          font-size: 25px;
+        }
+        .controls {
+          gap: 16px;
+        }
+        .scene {
+          height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">SEA MACHINE / INTERFACE STUDIES</div>
+      <h1>Know the vessel at a glance.</h1>
+      <p>
+        Six persistent identity treatments, shown on the same chart with the
+        current vessel silhouettes. Labels stay horizontal as headings change.
+        Start with 02 for a clear, compact default; compare 04 when vessels get
+        closer together.
+      </p>
+      <div class="controls">
+        <label
+          >Heading offset
+          <input
+            id="heading"
+            type="range"
+            min="-180"
+            max="180"
+            value="0"
+          /><output id="degrees">0°</output></label
+        ><label><input id="dense" type="checkbox" /> Close formation</label
+        ><label><input id="rings" type="checkbox" checked /> Range rings</label
+        ><button id="reset" type="button">Reset view</button
+        ><a href="/">Back to fleet</a>
+      </div>
+    </header>
+    <main id="studies"></main>
+    <p class="note">
+      Design comparison · schematic chart, actual vessel SVGs · fixed
+      screen-size labels · close formation exposes overlap; these studies do not
+      implement automatic label collision avoidance.
+    </p>
+    <script>
+      const boats = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220" fill="none">\n  <title>Sea Machine boat, viewed from above</title>\n  <path d="M32 6Q50 3 68 6L82 29 89 65 94 177Q94 196 83 202H76V208Q76 213 71 213H61Q56 213 56 208V202H44V208Q44 213 39 213H29Q24 213 24 208V202H17Q6 196 6 177L11 65 18 29Z" fill="#000" stroke="#f5e835" stroke-width="1.5" stroke-linejoin="round"/>\n</svg>\n',
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220" fill="none">\n  <title>Patrol vessel, viewed from above</title>\n  <path d="M37 7H63C71 15 81 33 86 53C91 75 92 98 92 120L90 196Q90 201 85 201H61V208Q61 213 56 213H44Q39 213 39 208V201H15Q10 201 10 196L8 120C8 98 9 75 14 53C19 33 29 15 37 7Z" fill="#000" stroke="#f5e835" stroke-width="1.5" stroke-linejoin="round"/>\n</svg>\n',
+      ];
+      const studies = [
+        [
+          'plain',
+          'Plain chart text',
+          'The quietest treatment. A subtle dark halo separates the ID from chart detail, but text can still blend into nearby place names.',
+        ],
+        [
+          'badge',
+          'Dark ID badge',
+          'A compact, stable reading surface. White identity stays distinct from the yellow vessel outline. Best default for quick scanning.',
+          'DEFAULT',
+        ],
+        [
+          'tab',
+          'Attached side tab',
+          'A short stem makes the relationship explicit and preserves the vessel silhouette. Uses more horizontal space than the badge.',
+        ],
+        [
+          'callout',
+          'Leader-line callout',
+          'Separates identity from hull and chart detail. Strong option for crowded areas when paired with automatic callout placement.',
+          'DENSE FLEETS',
+        ],
+        [
+          'inside',
+          'ID inside the hull',
+          'The strongest attachment with no extra map footprint. Short IDs fit; narrow hulls and changing headings constrain legibility.',
+        ],
+        [
+          'card',
+          'Compact identity card',
+          'Adds the vessel name for crews who recognize names faster than codes. Clear hierarchy, with a larger footprint on the chart.',
+        ],
+      ];
+      const chart = `<svg class="chart" viewBox="0 0 500 300" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" stroke="#71838e" stroke-opacity=".07"/></pattern></defs><rect width="500" height="300" fill="url(#grid)"/><path d="M0 0H47L39 34 58 51 45 76 61 98 46 117 69 141 55 160 82 187 73 214 103 239 95 266 132 300H0Z" fill="#111719"/><path d="M0 134L36 145 29 160 50 174 46 189 66 204 64 226 81 249 77 271 91 300" fill="none" stroke="#54616c" stroke-width="1.2"/><path d="M84 42l16 -5 11 9 -19 6ZM66 97l9 -7 5 17 -10 2ZM100 250l18 -5 10 8 -24 6Z" fill="#111719"/><text x="20" y="251" fill="#84929b" font-family="Arial" font-size="9">HULL</text><path d="M25 61l-4 10h8Z" fill="#b34b4b"/><path d="M57 219l-4 10h8Z" fill="#528b64"/><text x="466" y="25" fill="#83949e" font-size="9" font-family="monospace">N ↑</text></svg>`;
+      document.querySelector('#studies').innerHTML = studies
+        .map(
+          ([style, title, description, tag], i) =>
+            `<article class="${style}"><div class="scene" role="img" aria-label="${title}: SR-01 and PV-02 with persistent labels">${chart}<svg class="chart" viewBox="0 0 500 300" preserveAspectRatio="none" aria-hidden="true"><g class="range-circles"></g></svg>${boats.map((boat, j) => `<div class="vessel" data-vessel="${j}"><div class="hull">${boat}</div><div class="label">${j ? 'PV-02' : 'SR-01'}${style === 'card' ? `<small>${j ? 'PATROL' : 'STORMRUNNER'}</small>` : ''}</div></div>`).join('')}</div><div class="caption"><div class="title"><h2><span class="number">0${i + 1}</span>${title}</h2>${tag ? `<span class="recommend">${tag}</span>` : ''}</div><p>${description}</p></div></article>`,
+        )
+        .join('');
+      const heading = document.querySelector('#heading'),
+        dense = document.querySelector('#dense'),
+        rings = document.querySelector('#rings');
+      function render() {
+        document.querySelector('#degrees').textContent = heading.value + '°';
+        document.body.classList.toggle('rings-off', !rings.checked);
+        const positions = dense.checked
+          ? [
+              [40, 61],
+              [58, 43],
+            ]
+          : [
+              [34, 62],
+              [61, 37],
+            ];
+        document.querySelectorAll('.vessel').forEach(el => {
+          const j = Number(el.dataset.vessel);
+          el.style.setProperty('--x', positions[j][0] + '%');
+          el.style.setProperty('--y', positions[j][1] + '%');
+          el.style.setProperty(
+            '--heading',
+            [135, 270][j] + Number(heading.value) + 'deg',
+          );
+        });
+        document
+          .querySelectorAll('.range-circles')
+          .forEach(
+            el =>
+              (el.innerHTML = positions
+                .map(([x, y]) =>
+                  [39, 78]
+                    .map(
+                      r =>
+                        `<circle class="ring" cx="${x * 5}" cy="${y * 3}" r="${r}"/>`,
+                    )
+                    .join(''),
+                )
+                .join('')),
+          );
+      }
+      [heading, dense, rings].forEach(el =>
+        el.addEventListener('input', render),
+      );
+      document.querySelector('#reset').addEventListener('click', () => {
+        heading.value = 0;
+        dense.checked = false;
+        rings.checked = true;
+        render();
+      });
+      render();
+    </script>
+  </body>
+</html>

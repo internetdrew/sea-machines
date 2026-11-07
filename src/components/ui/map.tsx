@@ -838,15 +838,32 @@ function MarkerTooltip({
       tooltip.setLngLat(marker.getLngLat()).addTo(map);
       updatePlacement();
     };
-    const handleMouseLeave = () => tooltip.remove();
+    let hovered = false;
+    let focused = false;
+    const enter = () => { hovered = true; handleMouseEnter(); };
+    const leave = () => { hovered = false; if (!focused) tooltip.remove(); };
+    const focus = (event: FocusEvent) => {
+      if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
+      focused = true;
+      handleMouseEnter();
+    };
+    const blur = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && marker.getElement().contains(event.relatedTarget)) return;
+      focused = false;
+      if (!hovered) tooltip.remove();
+    };
 
-    marker.getElement()?.addEventListener("mouseenter", handleMouseEnter);
-    marker.getElement()?.addEventListener("mouseleave", handleMouseLeave);
+    marker.getElement()?.addEventListener("mouseenter", enter);
+    marker.getElement()?.addEventListener("mouseleave", leave);
+    marker.getElement()?.addEventListener("focusin", focus);
+    marker.getElement()?.addEventListener("focusout", blur);
     map.on("render", updatePlacement);
 
     return () => {
-      marker.getElement()?.removeEventListener("mouseenter", handleMouseEnter);
-      marker.getElement()?.removeEventListener("mouseleave", handleMouseLeave);
+      marker.getElement()?.removeEventListener("mouseenter", enter);
+      marker.getElement()?.removeEventListener("mouseleave", leave);
+      marker.getElement()?.removeEventListener("focusin", focus);
+      marker.getElement()?.removeEventListener("focusout", blur);
       map.off("render", updatePlacement);
       tooltip.remove();
     };

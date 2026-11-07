@@ -1,3 +1,4 @@
+import { getVesselIdentity } from '@/lib/vessel/vessel';
 import {
   useCallback,
   useEffect,
@@ -308,7 +309,7 @@ export function MissionPlanner({
               : 'Plan a mission'}
         </Drawer.Title>
         <Drawer.Description className='mt-1 text-xs text-muted-foreground'>
-          {vessel.id} · {vessel.name}
+          {getVesselIdentity(vessel)}
         </Drawer.Description>
         <Drawer.Close
           aria-label='Close mission planner'

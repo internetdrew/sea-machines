@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { MapGeoJSON, MapMarker, MarkerContent, MarkerLabel } from '@/components/ui/map';
+import { MapGeoJSON, MapMarker, MarkerContent } from '@/components/ui/map';
 import type { VesselFrame } from '@/lib/vessel/simulation';
 import { isMissionInProgress } from '@/lib/vessel/vessel';
 import { GridMissionRoute } from './GridMissionRoute';
@@ -9,11 +9,11 @@ export const ActiveMissionLayer = memo(function ActiveMissionLayer({ vesselId, f
   if (!mission || !isMissionInProgress(frame)) return null;
   const id = `deployed-mission-${vesselId}`;
   const departureMarker = <MapMarker longitude={mission.origin[0]} latitude={mission.origin[1]} subpixelPositioning>
-    <MarkerContent className='pointer-events-none'>
-      <span aria-label='Mission departure point' className='block size-2.5 rounded-full border-2 border-neutral-300 bg-neutral-700' />
-      <MarkerLabel position='bottom' className='rounded border border-white/15 bg-neutral-900 px-1.5 py-0.5 text-neutral-300 shadow-sm'>
-        {mission.type === 'grid' ? 'Departure' : 'Start'}
-      </MarkerLabel>
+    <MarkerContent className='pointer-events-none size-2.5'>
+      <span aria-label='Mission origin' className='block size-2.5 rounded-full border border-slate-400 bg-transparent' />
+      <span className='absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap text-[11px] font-normal leading-none text-slate-400 [text-shadow:0_1px_2px_#11191f]'>
+        Mission origin
+      </span>
     </MarkerContent>
   </MapMarker>;
   if (mission.type === 'grid') return <>
