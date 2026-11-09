@@ -1,4 +1,4 @@
-import { NavigationTooltipProvider } from '@/components/ui/navigation-tooltip';
+import { NavigationTooltipProvider } from '@/components/NavigationTooltip';
 import type { Map as MapInstance } from 'maplibre-gl';
 import { Map, MapControls } from '@/components/ui/map';
 import { useCallback, useMemo, useRef, useState } from 'react';

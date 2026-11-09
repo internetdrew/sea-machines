@@ -1,6 +1,6 @@
 'use client';
 
-import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Popover } from '@base-ui/react/popover';

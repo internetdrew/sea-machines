@@ -2,7 +2,7 @@ import { getVesselDisplayName } from '@/lib/vessel/vessel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Check, Copy, TriangleAlert } from 'lucide-react';
-import { TextSwap } from '@/components/ui/text-swap';
+import { TextSwap } from '@/components/TextSwap';
 import { distanceNm } from '@/lib/vessel/mission';
 import { getFuelAppearance } from '@/lib/vessel/fuel';
 import type { VesselFrame } from '@/lib/vessel/simulation';

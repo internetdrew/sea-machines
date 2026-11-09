@@ -1,5 +1,5 @@
-import { NavigationTooltip } from '@/components/ui/navigation-tooltip';
-import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+import { NavigationTooltip } from '@/components/NavigationTooltip';
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { useId } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Switch } from '@base-ui/react/switch';

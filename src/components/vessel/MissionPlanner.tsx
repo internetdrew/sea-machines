@@ -1,4 +1,4 @@
-import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { getVesselIdentity } from '@/lib/vessel/vessel';
 import {
   useCallback,

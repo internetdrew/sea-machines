@@ -1,6 +1,6 @@
 "use client";
 
-import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 
 import type * as MapLibreGL from "maplibre-gl";
 import type { PopupOptions, MarkerOptions } from "maplibre-gl";
@@ -23,7 +23,7 @@ import {
 import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Minimize, Loader2 } from "lucide-react";
 
-import { NavigationTooltip } from '@/components/ui/navigation-tooltip';
+import { NavigationTooltip } from '@/components/NavigationTooltip';
 import { cn } from "@/lib/utils";
 import { animateAttributionCollapse } from "@/lib/attribution-motion";
 import { placeMapTooltip } from "@/lib/map-tooltip-placement";
