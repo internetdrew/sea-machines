@@ -1,3 +1,5 @@
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
+import { getVesselIdentity } from '@/lib/vessel/vessel';
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { Button } from '@base-ui/react/button';
 import { Drawer } from '@base-ui/react/drawer';
@@ -32,8 +34,8 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
   return <>
     <header className='shrink-0 px-6 pt-6 pb-4'>
       <Drawer.Title ref={title} tabIndex={-1} className='pr-8 text-lg font-medium outline-none'>Mission control</Drawer.Title>
-      <Drawer.Description className='mt-1 text-xs text-muted-foreground'>{vessel.id} · {vessel.name}</Drawer.Description>
-      <Drawer.Close aria-label='Close mission control' className='absolute top-5 right-5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'><X className='size-4' /></Drawer.Close>
+      <Drawer.Description className='mt-1 text-xs text-muted-foreground'>{getVesselIdentity(vessel)}</Drawer.Description>
+      <Drawer.Close aria-label='Close mission control' className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`} ><X className='size-4' /></Drawer.Close>
       <div className='mt-3 flex items-center gap-2 text-[11px]'>
         <span className={`rounded-full px-2.5 py-0.5 font-medium ${status.colors}`} role='status'>{status.label}</span>
         {getMissionPhaseLabel(snapshot) && <span className='text-muted-foreground'>{getMissionPhaseLabel(snapshot)}</span>}

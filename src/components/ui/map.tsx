@@ -1,5 +1,7 @@
 "use client";
 
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
+
 import type * as MapLibreGL from "maplibre-gl";
 import type { PopupOptions, MarkerOptions } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -19,8 +21,9 @@ import {
   type Ref,
 } from "react";
 import { createPortal } from "react-dom";
-import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Locate, Maximize, Minimize, Loader2 } from "lucide-react";
 
+import { NavigationTooltip } from '@/components/NavigationTooltip';
 import { cn } from "@/lib/utils";
 import { animateAttributionCollapse } from "@/lib/attribution-motion";
 import { placeMapTooltip } from "@/lib/map-tooltip-placement";
@@ -358,10 +361,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
           const button = attribution?.querySelector<HTMLElement>(".maplibregl-ctrl-attrib-button");
           // A deliberate interaction takes precedence over automatic dismissal.
           button?.addEventListener("click", () => clearTimeout(attributionTimer), { once: true, capture: true });
-          if (attribution) stopAttributionMotion = animateAttributionCollapse(attribution);
+          const attributionMotion = attribution ? animateAttributionCollapse(attribution) : undefined;
+          stopAttributionMotion = attributionMotion?.destroy;
           attributionTimer = setTimeout(() => {
             if (attribution?.classList.contains("maplibregl-compact-show") &&
-                !attribution.matches(":hover, :focus-within")) button?.click();
+                !attribution.matches(":hover, :focus-within")) attributionMotion?.collapse();
           }, 5000);
         });
         instance.on("style.load", () => {
@@ -684,9 +688,9 @@ function PopupCloseButton({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Close popup"
-      className="focus-visible:ring-ring hover:bg-muted text-foreground absolute top-1 right-1 z-10 inline-flex size-5 cursor-pointer items-center justify-center rounded-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      className={`absolute top-1 right-1 z-10 ${CLOSE_BUTTON_CLASS}`}
     >
-      <X className="size-3.5" />
+      <X className='size-4' />
     </button>
   );
 }
@@ -838,15 +842,32 @@ function MarkerTooltip({
       tooltip.setLngLat(marker.getLngLat()).addTo(map);
       updatePlacement();
     };
-    const handleMouseLeave = () => tooltip.remove();
+    let hovered = false;
+    let focused = false;
+    const enter = () => { hovered = true; handleMouseEnter(); };
+    const leave = () => { hovered = false; if (!focused) tooltip.remove(); };
+    const focus = (event: FocusEvent) => {
+      if (!(event.target instanceof HTMLElement) || !event.target.matches(":focus-visible")) return;
+      focused = true;
+      handleMouseEnter();
+    };
+    const blur = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && marker.getElement().contains(event.relatedTarget)) return;
+      focused = false;
+      if (!hovered) tooltip.remove();
+    };
 
-    marker.getElement()?.addEventListener("mouseenter", handleMouseEnter);
-    marker.getElement()?.addEventListener("mouseleave", handleMouseLeave);
+    marker.getElement()?.addEventListener("mouseenter", enter);
+    marker.getElement()?.addEventListener("mouseleave", leave);
+    marker.getElement()?.addEventListener("focusin", focus);
+    marker.getElement()?.addEventListener("focusout", blur);
     map.on("render", updatePlacement);
 
     return () => {
-      marker.getElement()?.removeEventListener("mouseenter", handleMouseEnter);
-      marker.getElement()?.removeEventListener("mouseleave", handleMouseLeave);
+      marker.getElement()?.removeEventListener("mouseenter", enter);
+      marker.getElement()?.removeEventListener("mouseleave", leave);
+      marker.getElement()?.removeEventListener("focusin", focus);
+      marker.getElement()?.removeEventListener("focusout", blur);
       map.off("render", updatePlacement);
       tooltip.remove();
     };
@@ -926,6 +947,8 @@ type MapControlsProps = {
   className?: string;
   /** Callback with user coordinates when located */
   onLocate?: (coords: { longitude: number; latitude: number }) => void;
+  /** Frame all fleet vessels using their current positions. */
+  onFitFleet?: () => void;
 };
 
 const positionClasses = {
@@ -954,7 +977,9 @@ function ControlButton({
   children: React.ReactNode;
   disabled?: boolean;
 }) {
+  const { map } = useMap();
   return (
+    <NavigationTooltip label={label} container={map?.getContainer()}>
     <button
       onClick={onClick}
       aria-label={label}
@@ -970,6 +995,7 @@ function ControlButton({
     >
       {children}
     </button>
+    </NavigationTooltip>
   );
 }
 
@@ -981,8 +1007,16 @@ function MapControls({
   showFullscreen = false,
   className,
   onLocate,
+  onFitFleet,
 }: MapControlsProps) {
   const { map } = useMap();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const update = () => setIsFullscreen(document.fullscreenElement === map?.getContainer());
+    update();
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, [map]);
   const [waitingForLocation, setWaitingForLocation] = useState(false);
 
   const handleZoomIn = useCallback(() => {
@@ -1050,6 +1084,12 @@ function MapControls({
           <ControlButton onClick={handleZoomOut} label="Zoom out">
             <Minus className="size-4" />
           </ControlButton>
+          {onFitFleet && <ControlButton onClick={onFitFleet} label="Fit fleet in view">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <path d="M8 3H3V8M16 3H21V8M3 16V21H8M16 21H21V16" />
+              <g fill="currentColor" stroke="none"><circle cx="8" cy="12" r="1.5" /><circle cx="15" cy="8" r="1.5" /><circle cx="15" cy="16" r="1.5" /></g>
+            </svg>
+          </ControlButton>}
         </ControlGroup>
       )}
       {showCompass && (
@@ -1074,8 +1114,8 @@ function MapControls({
       )}
       {showFullscreen && (
         <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-            <Maximize className="size-4" />
+          <ControlButton onClick={handleFullscreen} label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+            {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
           </ControlButton>
         </ControlGroup>
       )}
@@ -1109,7 +1149,7 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [map]);
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
+    <ControlButton onClick={onClick} label="Reset north">
       <svg
         ref={compassRef}
         viewBox="0 0 24 24"

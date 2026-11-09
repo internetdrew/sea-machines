@@ -186,7 +186,7 @@
     box-sizing: content-box;
   }
   .maplibregl-ctrl-attrib-button {
-    @apply bg-transparent! dark:invert;
+    @apply bg-transparent!;
     top: 50% !important;
     transform: translateY(-50%);
     background-position: center;
@@ -232,4 +232,180 @@
 /* MapLibre adds a 10px margin to the attribution control itself. */
 .maplibregl-map .maplibregl-ctrl-bottom-right {
   bottom: calc(var(--map-edge-inset, 1rem) - 10px);
+}
+
+/* Screen-aligned vessel IDs. Labels do not intercept marker or map input. */
+.vessel-identities {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.vessel-identity {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 5px 8px;
+  border: 1px solid rgb(145 164 177 / 28%);
+  border-radius: 5px;
+  background: #11191ff2;
+  color: #f4f6f8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+.vessel-identity-leader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgb(169 187 198 / 65%);
+  stroke-width: 1;
+}
+
+.vessel-identity-series {
+  display: block;
+  margin-top: 1px;
+  color: #9ba8b0;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+}
+
+.vessel-position-copy::before {
+  background: rgb(255 255 255 / 6%);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.vessel-position-copy-icon {
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .vessel-position-copy:hover::before {
+    opacity: 0.416667;
+  }
+  .vessel-position-copy:hover .vessel-position-copy-icon {
+    opacity: 1;
+  }
+}
+.vessel-position-copy:focus-visible::before {
+  opacity: 0.416667;
+  transition: none;
+}
+.vessel-position-copy:focus-visible .vessel-position-copy-icon {
+  opacity: 1;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-position-copy::before,
+  .vessel-position-copy-icon {
+    transition: none;
+  }
+}
+
+/* Copy confirmation: overlapping glyphs, matching the approved motion study. */
+.vessel-copy-icon-swap .vessel-copy-glyph {
+  grid-area: 1 / 1;
+  opacity: 0;
+  filter: blur(2px);
+  transform: scale(0.25);
+  transition: opacity 250ms ease-in-out, filter 250ms ease-in-out, transform 250ms ease-in-out;
+}
+.vessel-copy-icon-swap[data-copied='false'] [data-icon='copy'],
+.vessel-copy-icon-swap[data-copied='true'] [data-icon='check'] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.vessel-copy-icon-swap[data-copied='true'] {
+  color: #86efac;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-copy-icon-swap .vessel-copy-glyph {
+    transition: none;
+  }
+}
+
+/* Charcoal navigation surfaces, matching the reference card. */
+.maplibregl-ctrl-attrib {
+  --background: #262626;
+  --foreground: #f5f5f5;
+  --muted-foreground: #b5b5b5;
+  --border: #ffffff1f;
+}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
+  filter: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus {
+  box-shadow: none;
+  outline: none;
+}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+@media (hover: hover) and (pointer: fine) {
+  .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:hover {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+  }
+}
+
+/* Press acknowledges input; green confirmation remains tied to copy success. */
+.vessel-position-copy:active::before,
+.vessel-position-copy[data-press-pulse='true']::before {
+  opacity: 1;
+  transition: opacity 100ms ease;
+}
+.vessel-position-copy:focus-visible:active::before {
+  opacity: 1;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-position-copy:active::before,
+  .vessel-position-copy[data-press-pulse='true']::before {
+    transition: none;
+  }
+}
+
+.ui-close-button {
+  isolation: isolate;
+}
+.ui-close-button:not(.absolute) {
+  position: relative;
+}
+.ui-close-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ui-close-button:hover::before {
+    opacity: 0.1;
+  }
+}
+.ui-close-button:focus-visible::before {
+  opacity: 0.1;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-close-button::before {
+    transition: none;
+  }
 }

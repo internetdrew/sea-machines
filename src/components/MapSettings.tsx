@@ -1,3 +1,5 @@
+import { NavigationTooltip } from '@/components/NavigationTooltip';
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { useId } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Switch } from '@base-ui/react/switch';
@@ -49,12 +51,14 @@ export function MapSettings({
 
   return (
     <Popover.Root>
+      <NavigationTooltip label='Map settings' container={map?.getContainer()}>
       <Popover.Trigger
         aria-label='Map settings'
         className='flex size-8 cursor-pointer items-center justify-center rounded-md border bg-background text-foreground shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring'
       >
         <Settings className='size-4' />
       </Popover.Trigger>
+      </NavigationTooltip>
       <Popover.Portal container={map?.getContainer()}>
         <Popover.Positioner
           side='bottom'
@@ -63,15 +67,15 @@ export function MapSettings({
           collisionPadding={12}
           className='z-50'
         >
-          <Popover.Popup className='relative w-72 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
+          <Popover.Popup className='[--popover:#262626] [--popover-foreground:#f5f5f5] [--border:#ffffff1f] [--muted:#333333] [--input:#525252] [--primary:#f5f5f5] [--background:#262626] [--ring:#d4d4d4] relative w-72 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
             <Popover.Title className='pr-6 text-sm font-medium'>
               Map settings
             </Popover.Title>
             <Popover.Close
               aria-label='Close map settings'
-              className='absolute top-3 right-3 inline-flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-150 motion-reduce:transition-none'
+              className={`absolute top-3 right-3 ${CLOSE_BUTTON_CLASS}`}
             >
-              <X className='size-3.5' />
+              <X className='size-4' />
             </Popover.Close>
             <div className='mt-2'>
               <SettingSwitch

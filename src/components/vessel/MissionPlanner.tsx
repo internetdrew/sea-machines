@@ -1,3 +1,5 @@
+import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
+import { getVesselIdentity } from '@/lib/vessel/vessel';
 import {
   useCallback,
   useEffect,
@@ -308,11 +310,11 @@ export function MissionPlanner({
               : 'Plan a mission'}
         </Drawer.Title>
         <Drawer.Description className='mt-1 text-xs text-muted-foreground'>
-          {vessel.id} · {vessel.name}
+          {getVesselIdentity(vessel)}
         </Drawer.Description>
         <Drawer.Close
           aria-label='Close mission planner'
-          className='absolute top-5 right-5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+          className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`}
         >
           <X className='size-4' />
         </Drawer.Close>
