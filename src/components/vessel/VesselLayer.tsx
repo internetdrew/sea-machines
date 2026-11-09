@@ -1,5 +1,7 @@
 'use client';
 
+import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { X } from 'lucide-react';
@@ -185,7 +187,7 @@ export function VesselLayer({
                 headerAction={
                   <Popover.Close
                     aria-label='Close vessel actions'
-                    className='inline-flex size-5.5 shrink-0 cursor-pointer items-center justify-center rounded text-neutral-400 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+                    className={CLOSE_BUTTON_CLASS}
                   >
                     <X className='size-4' />
                   </Popover.Close>

@@ -1,3 +1,5 @@
+import { NavigationTooltip } from '@/components/ui/navigation-tooltip';
+import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
 import { useId } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Switch } from '@base-ui/react/switch';
@@ -49,12 +51,14 @@ export function MapSettings({
 
   return (
     <Popover.Root>
+      <NavigationTooltip label='Map settings' container={map?.getContainer()}>
       <Popover.Trigger
         aria-label='Map settings'
         className='flex size-8 cursor-pointer items-center justify-center rounded-md border bg-background text-foreground shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring'
       >
         <Settings className='size-4' />
       </Popover.Trigger>
+      </NavigationTooltip>
       <Popover.Portal container={map?.getContainer()}>
         <Popover.Positioner
           side='bottom'
@@ -69,9 +73,9 @@ export function MapSettings({
             </Popover.Title>
             <Popover.Close
               aria-label='Close map settings'
-              className='absolute top-3 right-3 inline-flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-150 motion-reduce:transition-none'
+              className={`absolute top-3 right-3 ${CLOSE_BUTTON_CLASS}`}
             >
-              <X className='size-3.5' />
+              <X className='size-4' />
             </Popover.Close>
             <div className='mt-2'>
               <SettingSwitch

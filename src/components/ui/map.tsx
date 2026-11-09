@@ -1,5 +1,7 @@
 "use client";
 
+import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
+
 import type * as MapLibreGL from "maplibre-gl";
 import type { PopupOptions, MarkerOptions } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -19,8 +21,9 @@ import {
   type Ref,
 } from "react";
 import { createPortal } from "react-dom";
-import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Locate, Maximize, Minimize, Loader2 } from "lucide-react";
 
+import { NavigationTooltip } from '@/components/ui/navigation-tooltip';
 import { cn } from "@/lib/utils";
 import { animateAttributionCollapse } from "@/lib/attribution-motion";
 import { placeMapTooltip } from "@/lib/map-tooltip-placement";
@@ -685,9 +688,9 @@ function PopupCloseButton({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Close popup"
-      className="focus-visible:ring-ring hover:bg-muted text-foreground absolute top-1 right-1 z-10 inline-flex size-5 cursor-pointer items-center justify-center rounded-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      className={`absolute top-1 right-1 z-10 ${CLOSE_BUTTON_CLASS}`}
     >
-      <X className="size-3.5" />
+      <X className='size-4' />
     </button>
   );
 }
@@ -944,6 +947,8 @@ type MapControlsProps = {
   className?: string;
   /** Callback with user coordinates when located */
   onLocate?: (coords: { longitude: number; latitude: number }) => void;
+  /** Frame all fleet vessels using their current positions. */
+  onFitFleet?: () => void;
 };
 
 const positionClasses = {
@@ -972,7 +977,9 @@ function ControlButton({
   children: React.ReactNode;
   disabled?: boolean;
 }) {
+  const { map } = useMap();
   return (
+    <NavigationTooltip label={label} container={map?.getContainer()}>
     <button
       onClick={onClick}
       aria-label={label}
@@ -988,6 +995,7 @@ function ControlButton({
     >
       {children}
     </button>
+    </NavigationTooltip>
   );
 }
 
@@ -999,8 +1007,16 @@ function MapControls({
   showFullscreen = false,
   className,
   onLocate,
+  onFitFleet,
 }: MapControlsProps) {
   const { map } = useMap();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const update = () => setIsFullscreen(document.fullscreenElement === map?.getContainer());
+    update();
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, [map]);
   const [waitingForLocation, setWaitingForLocation] = useState(false);
 
   const handleZoomIn = useCallback(() => {
@@ -1068,6 +1084,12 @@ function MapControls({
           <ControlButton onClick={handleZoomOut} label="Zoom out">
             <Minus className="size-4" />
           </ControlButton>
+          {onFitFleet && <ControlButton onClick={onFitFleet} label="Fit fleet in view">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <path d="M8 3H3V8M16 3H21V8M3 16V21H8M16 21H21V16" />
+              <g fill="currentColor" stroke="none"><circle cx="8" cy="12" r="1.5" /><circle cx="15" cy="8" r="1.5" /><circle cx="15" cy="16" r="1.5" /></g>
+            </svg>
+          </ControlButton>}
         </ControlGroup>
       )}
       {showCompass && (
@@ -1092,8 +1114,8 @@ function MapControls({
       )}
       {showFullscreen && (
         <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-            <Maximize className="size-4" />
+          <ControlButton onClick={handleFullscreen} label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+            {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
           </ControlButton>
         </ControlGroup>
       )}
@@ -1127,7 +1149,7 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [map]);
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
+    <ControlButton onClick={onClick} label="Reset north">
       <svg
         ref={compassRef}
         viewBox="0 0 24 24"

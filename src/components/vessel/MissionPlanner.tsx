@@ -1,3 +1,4 @@
+import { CLOSE_BUTTON_CLASS } from '@/components/ui/close-button';
 import { getVesselIdentity } from '@/lib/vessel/vessel';
 import {
   useCallback,
@@ -313,7 +314,7 @@ export function MissionPlanner({
         </Drawer.Description>
         <Drawer.Close
           aria-label='Close mission planner'
-          className='absolute top-5 right-5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+          className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`}
         >
           <X className='size-4' />
         </Drawer.Close>

@@ -377,3 +377,35 @@
     transition: none;
   }
 }
+
+.ui-close-button {
+  isolation: isolate;
+}
+.ui-close-button:not(.absolute) {
+  position: relative;
+}
+.ui-close-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ui-close-button:hover::before {
+    opacity: 0.1;
+  }
+}
+.ui-close-button:focus-visible::before {
+  opacity: 0.1;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-close-button::before {
+    transition: none;
+  }
+}
