@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220" fill="none">
   <title>Sea Machine boat, viewed from above</title>
-  <path d="M32 6Q50 3 68 6L82 29 89 65 94 177Q94 196 83 202H76V208Q76 213 71 213H61Q56 213 56 208V202H44V208Q44 213 39 213H29Q24 213 24 208V202H17Q6 196 6 177L11 65 18 29Z" fill="#000" stroke="#f5e835" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M32 6Q50 3 68 6L82 29 89 65 94 177Q94 196 83 202H76V208Q76 213 71 213H61Q56 213 56 208V202H44V208Q44 213 39 213H29Q24 213 24 208V202H17Q6 196 6 177L11 65 18 29Z" fill="#000" stroke="#f5f5f580" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>

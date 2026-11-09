@@ -14,7 +14,12 @@ export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
     const entries = vessels.map(vessel => {
       const label = document.createElement('div');
       label.className = 'vessel-identity';
-      label.textContent = vessel.id;
+      const fleetId = document.createElement('span');
+      fleetId.textContent = vessel.id;
+      const series = document.createElement('span');
+      series.className = 'vessel-identity-series';
+      series.textContent = vessel.series.label;
+      label.append(fleetId, series);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       line.classList.add('vessel-identity-leader');
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');

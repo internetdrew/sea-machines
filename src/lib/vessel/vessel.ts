@@ -17,7 +17,9 @@ export type VesselSeries = {
 };
 
 export type VesselDefinition = {
+  /** Operator-assigned fleet ID; never inferred from series or radio identity. */
   id: string;
+  radioCallSign?: string;
   name?: string;
   series: VesselSeries;
   initialPosition: Coordinate;

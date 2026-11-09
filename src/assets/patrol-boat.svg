@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 220" fill="none">
   <title>Patrol vessel, viewed from above</title>
-  <path d="M37 7H63C71 15 81 33 86 53C91 75 92 98 92 120L90 196Q90 201 85 201H61V208Q61 213 56 213H44Q39 213 39 208V201H15Q10 201 10 196L8 120C8 98 9 75 14 53C19 33 29 15 37 7Z" fill="#000" stroke="#f5e835" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M37 7H63C71 15 81 33 86 53C91 75 92 98 92 120L90 196Q90 201 85 201H61V208Q61 213 56 213H44Q39 213 39 208V201H15Q10 201 10 196L8 120C8 98 9 75 14 53C19 33 29 15 37 7Z" fill="#000" stroke="#f5f5f580" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>

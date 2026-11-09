@@ -358,10 +358,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
           const button = attribution?.querySelector<HTMLElement>(".maplibregl-ctrl-attrib-button");
           // A deliberate interaction takes precedence over automatic dismissal.
           button?.addEventListener("click", () => clearTimeout(attributionTimer), { once: true, capture: true });
-          if (attribution) stopAttributionMotion = animateAttributionCollapse(attribution);
+          const attributionMotion = attribution ? animateAttributionCollapse(attribution) : undefined;
+          stopAttributionMotion = attributionMotion?.destroy;
           attributionTimer = setTimeout(() => {
             if (attribution?.classList.contains("maplibregl-compact-show") &&
-                !attribution.matches(":hover, :focus-within")) button?.click();
+                !attribution.matches(":hover, :focus-within")) attributionMotion?.collapse();
           }, 5000);
         });
         instance.on("style.load", () => {

@@ -3,29 +3,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { X } from 'lucide-react';
-import { VesselFuel } from './VesselFuel';
-import { VesselTelemetry } from './VesselTelemetry';
 import { VesselHoverCard } from './VesselHoverCard';
 import { ActiveMissionLayer } from './ActiveMissionLayer';
-import type { Marker, Popup } from 'maplibre-gl';
-import {
-  MapMarker,
-  MarkerContent,
-  MarkerTooltip,
-  useMap,
-} from '@/components/ui/map';
+import type { Marker } from 'maplibre-gl';
+import { MapMarker, MarkerContent, useMap } from '@/components/ui/map';
 import boat from '@/assets/boat.svg?raw';
 import selkie from '@/assets/patrol-boat.svg?raw';
 import { createVesselRenderer } from './renderer';
 import type { VesselDisplayOptions } from './renderer';
 import { Drawer } from '@base-ui/react/drawer';
 import type { MissionDrawerPayload } from './MissionDrawer';
-import {
-  getVesselDisplayName,
-  getVesselIdentity,
-  getVesselActivity,
-  isMissionInProgress,
-} from '@/lib/vessel/vessel';
+import { getVesselIdentity, isMissionInProgress } from '@/lib/vessel/vessel';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 type Props = VesselDisplayOptions & {
@@ -49,11 +37,8 @@ export function VesselLayer({
   const [markerFocused, setMarkerFocused] = useState(false);
   const openingDrawer = useRef(false);
   const markerButton = useRef<HTMLButtonElement | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const marker = useRef<Marker | null>(null);
   const missionMarker = useRef<Marker | null>(null);
-  const tooltip = useRef<Popup | null>(null);
   const renderer = useRef<ReturnType<typeof createVesselRenderer> | null>(null);
   const snapshot = useSyncExternalStore(
     simulation.subscribe,
@@ -68,8 +53,7 @@ export function VesselLayer({
       !mapLib ||
       !isLoaded ||
       !marker.current ||
-      !missionMarker.current ||
-      !tooltip.current
+      !missionMarker.current
     )
       return;
     const instance = createVesselRenderer(
@@ -79,7 +63,6 @@ export function VesselLayer({
       {
         marker: marker.current,
         missionMarker: missionMarker.current,
-        tooltip: tooltip.current,
       },
       { follow: false, showRangeRings: false },
       onPan,
@@ -101,9 +84,6 @@ export function VesselLayer({
       onOpenChange={open => {
         if (open) {
           openingDrawer.current = false;
-          setDetailsOpen(false);
-          setCopyState('idle');
-          tooltip.current?.remove();
         }
         setPopoverOpen(open);
       }}
@@ -167,86 +147,73 @@ export function VesselLayer({
           >
             <svg
               data-vessel-hull={vessel.id}
+              data-selected={popoverOpen}
               viewBox='0 0 100 220'
               aria-hidden='true'
-              dangerouslySetInnerHTML={{ __html: (vessel.series.silhouette === 'selkie' ? selkie : boat).replace(/<svg[^>]*>|<\/svg>|<title>[\s\S]*?<\/title>/g, '') }}
-              className='h-24 w-auto drop-shadow-lg'
+              dangerouslySetInnerHTML={{
+                __html: (vessel.series.silhouette === 'selkie'
+                  ? selkie
+                  : boat
+                ).replace(/<svg[^>]*>|<\/svg>|<title>[\s\S]*?<\/title>/g, ''),
+              }}
+              className='h-24 w-auto drop-shadow-lg data-[selected=false]:hover:[&>path]:stroke-neutral-100/80 data-[selected=true]:[&>path]:stroke-[#f5e835]'
             />
           </Popover.Trigger>
         </MarkerContent>
-        <MarkerTooltip
-          ref={tooltip}
-          className={popoverOpen ? 'hidden' : undefined}
-          variant='card'
-          placement='beside'
-          offset={74}
-          subpixelPositioning
-        >
-          <VesselHoverCard vessel={vessel} snapshot={snapshot} />
-        </MarkerTooltip>
         <Popover.Portal>
           <Popover.Positioner
-            side='top'
-            sideOffset={8}
+            side='right'
+            sideOffset={20}
+            collisionPadding={12}
             className='z-50 data-anchor-hidden:invisible'
           >
             <Popover.Popup
               finalFocus={() =>
                 openingDrawer.current ? false : (markerButton.current ?? false)
               }
-              className='relative w-64 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
+              className='relative w-72 max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto origin-(--transform-origin) rounded-lg border border-white/15 bg-neutral-900 p-4.5 text-sm text-neutral-100 shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
             >
-              <Popover.Close
-                aria-label='Close vessel actions'
-                className='absolute top-2 right-2 inline-flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-150 motion-reduce:transition-none'
-              >
-                <X className='size-3.5' />
-              </Popover.Close>
-              <Popover.Title className='pr-4 text-sm font-medium'>
-                {vessel.id}
+              <Popover.Title className='sr-only'>
+                {getVesselIdentity(vessel)}
               </Popover.Title>
-
-              <Popover.Description className='text-xs text-muted-foreground'>
-                {getVesselDisplayName(vessel)}
+              <Popover.Description className='sr-only'>
+                Vessel awareness and actions
               </Popover.Description>
-
-              {detailsOpen ? <>
-                <button type='button' onClick={() => setDetailsOpen(false)} className='mt-3 cursor-pointer text-xs text-muted-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring'>Back to actions</button>
-                <p className='mt-3 text-xs text-muted-foreground'>{getVesselActivity(snapshot).label}</p>
-                <VesselTelemetry snapshot={snapshot} />
-                <VesselFuel tanks={vessel.fuelTanks} />
-              </> : <>
-              <Drawer.Trigger
-                handle={missionDrawer}
-                payload={{ vesselId: vessel.id, returnFocus: markerButton }}
-                onClick={() => {
-                  if (
-                    snapshot.phase === 'complete' ||
-                    snapshot.phase === 'aborted'
-                  )
-                    simulation.clearFinishedMission();
-                  openingDrawer.current = true;
-                  setPopoverOpen(false);
-                }}
-                className='flex text-sm font-medium items-center cursor-pointer justify-center mt-4 gap-1 bg-black text-white w-full py-1.5 rounded-md disabled:cursor-default disabled:opacity-50'
-              >
-                {isMissionInProgress(snapshot)
-                  ? 'View mission'
-                  : 'Plan a mission'}
-              </Drawer.Trigger>
-              <div className='mt-2 flex flex-col gap-1 border-t pt-2'>
-                <button type='button' onClick={() => setDetailsOpen(true)} className='cursor-pointer rounded px-2 py-2 text-left text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'>View vessel details</button>
-                <button type='button' onClick={async () => {
-                  try {
-                    const [longitude, latitude] = simulation.getFrame().position;
-                    await navigator.clipboard.writeText(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-                    setCopyState('copied');
-                  } catch { setCopyState('error'); }
-                }} className='cursor-pointer rounded px-2 py-2 text-left text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'>Copy position</button>
-                <p role='status' className='px-2 text-[11px] text-muted-foreground'>{copyState === 'copied' ? 'Position copied (latitude, longitude)' : copyState === 'error' ? 'Unable to copy. Position is available in vessel details.' : ''}</p>
-              </div>
-              </>}
-
+              <VesselHoverCard
+                vessel={vessel}
+                snapshot={snapshot}
+                headerAction={
+                  <Popover.Close
+                    aria-label='Close vessel actions'
+                    className='inline-flex size-5.5 shrink-0 cursor-pointer items-center justify-center rounded text-neutral-400 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+                  >
+                    <X className='size-4' />
+                  </Popover.Close>
+                }
+              />
+              <footer className='mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
+                <Drawer.Trigger
+                  handle={missionDrawer}
+                  payload={{
+                    vesselId: vessel.id,
+                    returnFocus: markerButton,
+                  }}
+                  onClick={() => {
+                    if (
+                      snapshot.phase === 'complete' ||
+                      snapshot.phase === 'aborted'
+                    )
+                      simulation.clearFinishedMission();
+                    openingDrawer.current = true;
+                    setPopoverOpen(false);
+                  }}
+                  className='flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+                >
+                  {isMissionInProgress(snapshot)
+                    ? 'View mission'
+                    : 'Plan a mission'}
+                </Drawer.Trigger>
+              </footer>
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>

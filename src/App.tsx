@@ -44,7 +44,7 @@ function App() {
           onPan={stopFollowing}
         />)}
         <FleetLabels vessels={vessels} />
-        <div className='map-toolbar absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
+        <div className='map-toolbar text-neutral-100 [--background:#262626] [--foreground:#f5f5f5] [--accent:#333333] [--border:#ffffff1f] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen />
           <MapSettings
             showSeamarks={showSeamarks}
