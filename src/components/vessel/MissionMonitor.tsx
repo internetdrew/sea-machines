@@ -41,7 +41,8 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
         {getMissionPhaseLabel(snapshot) && <span className='text-muted-foreground'>{getMissionPhaseLabel(snapshot)}</span>}
       </div>
     </header>
-    <div ref={attachScrollArea} className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] pb-6 [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges]'>
+    <div ref={attachScrollArea} className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges]'>
+      <div className='mission-drawer-body flow-root pb-6'>
       <section aria-label='Vessel telemetry' className='border-t'>
         <VesselTelemetry snapshot={snapshot} />
         <VesselFuel tanks={vessel.fuelTanks} />
@@ -78,6 +79,7 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
           <div><dt className='text-muted-foreground'>Turn speed</dt><dd className='mt-1 font-medium'>{mission.turnSpeed} kn</dd></div>
         </dl>
       </section>
+      </div>
     </div>
     <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
       {active ? <MissionOperations vessel={vessel} snapshot={snapshot} terminalFocus={title} /> : <Button onClick={() => vessel.simulation.clearFinishedMission()} className='min-h-10 w-full cursor-pointer rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring'>Plan a new mission</Button>}

@@ -61,12 +61,13 @@ export function WaypointMissionRoute({ id, coordinates, revision, visible }: {
     const to = coordinates[coordinates.length - 1];
     // Follow the short longitude span across the date line.
     const longitudeDelta = ((to[0] - from[0] + 540) % 360) - 180;
-    source.setData(lineData([...prefix, from]));
+    source.setData(lineData([...prefix, [...from]]));
     const start = performance.now();
     let frame = 0;
     const draw = (now: number) => {
-      const progress = Math.min(1, (now - start) / DRAW_DURATION_MS);
+      const progress = Math.max(0, Math.min(1, (now - start) / DRAW_DURATION_MS));
       const eased = easeOutCubic(progress);
+      // Each asynchronous source update owns its geometry snapshot.
       source.setData(lineData(progress === 1 ? coordinates : [...prefix, [
         from[0] + longitudeDelta * eased,
         from[1] + (to[1] - from[1]) * eased,

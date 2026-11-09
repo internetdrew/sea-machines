@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
+import { syncMissionDrawerSize } from '@/lib/mission-drawer-size';
 import { syncDrawerControls } from '@/lib/drawer-controls-motion';
 import type { ComponentProps, RefObject } from 'react';
 import { Drawer } from '@base-ui/react/drawer';
@@ -69,7 +70,10 @@ export function MissionDrawer({
   const [steps, setSteps] = useState<Record<string, MissionPlanningStep>>({});
   const [drafts, setDrafts] = useState<Record<string, MissionDraft>>({});
   const attachDrawerMotion = useCallback((popup: HTMLDivElement | null) => {
-    if (popup && map) return syncDrawerControls(map.getContainer(), popup);
+    if (!popup || !map) return;
+    const stopMotion = syncDrawerControls(map.getContainer(), popup);
+    const stopSizing = syncMissionDrawerSize(popup);
+    return () => { stopSizing(); stopMotion?.(); };
   }, [map]);
   return (
     <Drawer.Root
@@ -96,9 +100,9 @@ export function MissionDrawer({
               <Drawer.Popup
                 ref={attachDrawerMotion}
                 finalFocus={() => payload?.returnFocus.current ?? false}
-                className='mission-drawer-popup pointer-events-auto relative flex flex-col rounded-2xl h-full w-96 max-w-[calc(100vw-24px)] overflow-hidden border-l bg-background text-foreground shadow-xl outline-none'
+                className='dark mission-drawer-popup pointer-events-auto relative flex self-start flex-col rounded-2xl max-h-full w-96 max-w-[calc(100vw-24px)] overflow-hidden border border-white/15 bg-[#262626] text-foreground shadow-xl outline-none'
               >
-                <Drawer.Content className='relative flex min-h-0 flex-1 flex-col overflow-hidden'>
+                <Drawer.Content className='mission-drawer-content relative flex min-h-0 flex-1 flex-col overflow-hidden'>
                   {vessel && (
                     <MissionDrawerBody
                       key={vessel.id}

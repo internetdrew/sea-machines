@@ -21,12 +21,12 @@ export function MissionOperations({ vessel, snapshot, compact = false, terminalF
       <Button
         aria-label={snapshot.playing ? 'Pause mission' : 'Resume mission'}
         onClick={() => vessel.simulation.setPlaying(!vessel.simulation.getFrame().playing)}
-        className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md px-3 font-medium focus-visible:outline-2 focus-visible:outline-ring ${compact ? 'border bg-background text-xs hover:bg-muted' : 'flex-1 bg-primary text-sm text-primary-foreground'}`}
+        className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md px-3 font-medium focus-visible:outline-2 focus-visible:outline-ring ${compact ? 'border bg-background text-xs hover:bg-white/[0.08]' : 'flex-1 bg-primary text-sm text-primary-foreground'}`}
       >
         {snapshot.playing ? <Pause className='size-3.5' /> : <Play className='size-3.5' />}
         {snapshot.playing ? compact ? 'Pause' : 'Pause mission' : compact ? 'Resume' : 'Resume mission'}
       </Button>
-      <AlertDialog.Trigger ref={abortButton} render={<Button />} aria-label='Abort mission' className='min-h-10 cursor-pointer rounded-md px-3 text-xs text-foreground hover:bg-muted hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring'>
+      <AlertDialog.Trigger ref={abortButton} render={<Button />} aria-label='Abort mission' className='min-h-10 cursor-pointer rounded-md px-3 text-xs text-foreground hover:bg-white/[0.08] hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring'>
         {compact ? 'Abort' : 'Abort mission'}
       </AlertDialog.Trigger>
     </div>

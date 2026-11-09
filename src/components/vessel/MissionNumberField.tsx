@@ -14,7 +14,7 @@ export function MissionNumberField({ label, unit, value, onValueChange, min, max
   errorId?: string;
 }) {
   const id = useId();
-  const stepper = 'flex w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-30';
+  const stepper = 'flex w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm hover:bg-white/[0.08] focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-30';
   return (
     <div className='min-w-0'>
       <label htmlFor={id} className='mb-1.5 block text-[11px] text-muted-foreground'>{label}</label>

@@ -178,7 +178,7 @@ export function VesselLayer({
               finalFocus={() =>
                 openingDrawer.current ? false : (markerButton.current ?? false)
               }
-              className='relative w-72 max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto origin-(--transform-origin) rounded-lg border border-white/15 bg-neutral-900 p-4.5 text-sm text-neutral-100 shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
+              className='relative w-72 max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto origin-(--transform-origin) rounded-lg border border-white/15 bg-[#262626] p-4.5 text-sm text-neutral-100 shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
             >
               <Popover.Title className='sr-only'>
                 {getVesselIdentity(vessel)}
