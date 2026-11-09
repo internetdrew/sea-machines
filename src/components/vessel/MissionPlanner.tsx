@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
 import { Button } from '@base-ui/react/button';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Drawer } from '@base-ui/react/drawer';
@@ -18,7 +19,6 @@ import type { MapMouseEvent } from 'maplibre-gl';
 import {
   MapGeoJSON,
   MapMarker,
-  MapRoute,
   MarkerContent,
   useMap,
 } from '@/components/ui/map';
@@ -37,6 +37,7 @@ import { fitMissionRoute } from '@/lib/mission-camera';
 import type { Vessel } from '@/lib/vessel/vessel';
 import { MissionNumberField } from './MissionNumberField';
 import { GridMissionRoute } from './GridMissionRoute';
+import { WaypointMissionRoute } from './WaypointMissionRoute';
 
 export type MissionPlanningStep = 'type' | 'route' | 'speeds' | 'review';
 const ROUTE_PLANNING_ZOOM = 11;
@@ -84,6 +85,8 @@ export function MissionPlanner({
   registerCloseGuard: (guard: () => boolean) => () => void;
 }) {
   const { map } = useMap();
+  const reduceMotion = useReducedMotion();
+  const [newWaypoint, setNewWaypoint] = useState<Coordinate | null>(null);
   const attachScrollArea = useCallback((element: HTMLDivElement | null) => {
     if (!element) return;
     const alignPadding = () => {
@@ -100,6 +103,7 @@ export function MissionPlanner({
   const [editing, setEditing] = useState(step === 'route' && (draft.type === 'waypoint' || !draft.grid.center));
   const [discardOpen, setDiscardOpen] = useState(false);
   const [hoverCoordinate, setHoverCoordinate] = useState<{ longitude: number; latitude: number; x: number; y: number } | null>(null);
+  const [waypointRevision, setWaypointRevision] = useState(0);
   const discardConfirmed = useRef(false);
   const closeButton = useRef<HTMLButtonElement | null>(null);
   const keepPlanningButton = useRef<HTMLButtonElement | null>(null);
@@ -150,7 +154,11 @@ export function MissionPlanner({
     const position = vessel.simulation.getFrame().position;
     if (draft.type === 'waypoint') {
       const next = addMissionWaypoint(draft, position, point);
-      if (next !== draft) onDraftChange(next);
+      if (next !== draft) {
+        setNewWaypoint(next.waypoints[next.waypoints.length - 1]);
+        setWaypointRevision(current => current + 1);
+        onDraftChange(next);
+      }
     } else {
       const grid = {
         ...draft.grid,
@@ -323,16 +331,12 @@ export function MissionPlanner({
           route={gridPlan.route}
         />
       )}
-      {isOpen && draft.type === 'waypoint' && hasRoute && (
-        <MapRoute
-          id={`mission-draft-${vessel.id}`}
-          coordinates={coordinates}
-          color='#14b8a6'
-          width={3}
-          opacity={1}
-          interactive={false}
-        />
-      )}
+      {draft.type === 'waypoint' && <WaypointMissionRoute
+        id={`mission-draft-${vessel.id}`}
+        coordinates={coordinates}
+        revision={waypointRevision}
+        visible={isOpen}
+      />}
       {isOpen &&
         draft.type === 'waypoint' &&
         draft.waypoints.map((point, index) => (
@@ -344,12 +348,16 @@ export function MissionPlanner({
             onDragEnd={({ lng, lat }) => update({ waypoints: draft.waypoints.map((current, i) => i === index ? [lng, lat] : current) })}
           >
             <MarkerContent>
-              <span
+              <motion.span
                 aria-label={`Mission waypoint ${index + 1}`}
+                initial={!reduceMotion && point === newWaypoint ? { scale: 0.9 } : false}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', visualDuration: 0.2, bounce: 0 }}
+                onAnimationComplete={() => setNewWaypoint(current => current === point ? null : current)}
                 className='flex size-6 items-center justify-center rounded-full border-2 border-white bg-teal-600 text-[10px] font-medium text-white shadow-sm'
               >
                 {index + 1}
-              </span>
+              </motion.span>
             </MarkerContent>
           </MapMarker>
         ))}
@@ -384,8 +392,7 @@ export function MissionPlanner({
         </Drawer.Description>
         <Drawer.Close
           ref={closeButton}
-          aria-label='Close mission planner and keep draft'
-          title='Close and keep draft'
+          aria-label='Close mission planner'
           className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`}
         >
           <X className='size-4' />

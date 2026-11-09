@@ -5,7 +5,7 @@ import type { LabelRect, LabelSide } from '@/lib/vessel/label-placement';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 // Separate viewport overlay: vessel headings never rotate the identity text.
-export function FleetLabels({ vessels, selectedVesselId, planningVesselId }: { vessels: readonly Vessel[]; selectedVesselId: string | null; planningVesselId: string | null }) {
+export function FleetLabels({ vessels, planningVesselId }: { vessels: readonly Vessel[]; planningVesselId: string | null }) {
   const { map, isLoaded } = useMap();
   const root = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -98,7 +98,6 @@ export function FleetLabels({ vessels, selectedVesselId, planningVesselId }: { v
       const content = label.querySelector<HTMLElement>('.vessel-identity-content');
       const series = label.querySelector<HTMLElement>('.vessel-identity-series');
       if (!vessel || !content || !series) return [];
-      label.dataset.selected = String(selectedVesselId === vessel.id);
       series.textContent = vessel.series.label + (planningVesselId === vessel.id ? ' · Planning' : '');
       return [{ label, content }];
     });
@@ -107,6 +106,6 @@ export function FleetLabels({ vessels, selectedVesselId, planningVesselId }: { v
       label.style.width = `${width}px`;
       label.style.height = `${height}px`;
     });
-  }, [map, isLoaded, vessels, selectedVesselId, planningVesselId]);
+  }, [map, isLoaded, vessels, planningVesselId]);
   return <div ref={root} className='vessel-identities' aria-hidden='true' />;
 }
