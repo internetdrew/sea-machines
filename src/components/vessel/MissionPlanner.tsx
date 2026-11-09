@@ -6,15 +6,13 @@ import {
   useEffectEvent,
   useId,
   useMemo,
+  useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@base-ui/react/button';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Drawer } from '@base-ui/react/drawer';
-import { Radio } from '@base-ui/react/radio';
-import { RadioGroup } from '@base-ui/react/radio-group';
 import { Grid2X2, Route, X } from 'lucide-react';
 import type { MapMouseEvent } from 'maplibre-gl';
 import {
@@ -31,15 +29,17 @@ import {
   missionCoordinates,
   missionDistance,
   missionSpeedError,
+  missionHasTurns,
 } from '@/lib/vessel/mission';
-import type { MissionDraft, MissionType } from '@/lib/vessel/mission';
+import type { MissionDraft } from '@/lib/vessel/mission';
 import type { Coordinate } from '@/lib/vessel/navigation';
+import { fitMissionRoute } from '@/lib/mission-camera';
 import type { Vessel } from '@/lib/vessel/vessel';
-import { getVesselActivity } from '@/lib/vessel/vessel';
-import { VesselFuel } from './VesselFuel';
-import { VesselTelemetry } from './VesselTelemetry';
 import { MissionNumberField } from './MissionNumberField';
 import { GridMissionRoute } from './GridMissionRoute';
+
+export type MissionPlanningStep = 'type' | 'route' | 'speeds' | 'review';
+const ROUTE_PLANNING_ZOOM = 11;
 
 const secondaryButton =
   'inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40';
@@ -69,6 +69,9 @@ export function MissionPlanner({
   isOpen,
   onDeploy,
   onCancel,
+  step,
+  onStepChange: setStep,
+  registerCloseGuard,
 }: {
   vessel: Vessel;
   draft: MissionDraft;
@@ -76,6 +79,9 @@ export function MissionPlanner({
   isOpen: boolean;
   onDeploy: (draft: MissionDraft) => boolean;
   onCancel: () => void;
+  step: MissionPlanningStep;
+  onStepChange: (step: MissionPlanningStep) => void;
+  registerCloseGuard: (guard: () => boolean) => () => void;
 }) {
   const { map } = useMap();
   const attachScrollArea = useCallback((element: HTMLDivElement | null) => {
@@ -89,21 +95,20 @@ export function MissionPlanner({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const snapshot = useSyncExternalStore(
-    vessel.simulation.subscribe,
-    vessel.simulation.getSnapshot,
-  );
-  const status = getVesselActivity(snapshot);
   const speedErrorId = useId();
   const typeLabelId = useId();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(step === 'route' && (draft.type === 'waypoint' || !draft.grid.center));
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [hoverCoordinate, setHoverCoordinate] = useState<{ longitude: number; latitude: number; x: number; y: number } | null>(null);
+  const discardConfirmed = useRef(false);
+  const closeButton = useRef<HTMLButtonElement | null>(null);
+  const keepPlanningButton = useRef<HTMLButtonElement | null>(null);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
-  const [step, setStep] = useState<'type' | 'route' | 'speeds' | 'review'>(
-    'type',
-  );
+  const [returnToReview, setReturnToReview] = useState(false);
   const reviewing = step === 'review';
   const placingWaypoints = step === 'route' && draft.type === 'waypoint';
+  const placingGrid = step === 'route' && draft.type === 'grid' && editing;
+  const placingOnMap = placingWaypoints || placingGrid;
   const gridPlan = useMemo(() => buildGridPlan(draft.grid), [draft.grid]);
   const coordinates = useMemo(() => missionCoordinates(draft), [draft]);
   const distance = useMemo(() => missionDistance(draft), [draft]);
@@ -111,6 +116,17 @@ export function MissionPlanner({
   const hasRoute = coordinates.length > 1;
   const hasPlannedPoints =
     draft.waypoints.length > 0 || draft.grid.center !== null;
+  const hasMissionDetails = step !== 'type' || hasPlannedPoints;
+  useEffect(() => {
+    if (!isOpen) return;
+    return registerCloseGuard(() => {
+      if (!hasMissionDetails) return true;
+      setDiscardOpen(true);
+      return false;
+    });
+  }, [isOpen, registerCloseGuard, hasMissionDetails]);
+  const hasTurns = missionHasTurns(draft);
+  const placementView = useRef<{ center: Coordinate; zoom: number; bearing: number; pitch: number } | null>(null);
   const minutes =
     draft.speed && draft.speed > 0
       ? Math.ceil((distance / draft.speed) * 60)
@@ -145,11 +161,12 @@ export function MissionPlanner({
       setEditing(false);
       const plan = buildGridPlan(grid);
       if (map && plan.boundary.length) {
-        const longitudes = plan.boundary.map(
+        const framingPoints = [position, ...plan.boundary];
+        const longitudes = framingPoints.map(
           ([longitude]) =>
             point[0] + ((longitude - point[0] + 540) % 360) - 180,
         );
-        const latitudes = plan.boundary.map(([, latitude]) => latitude);
+        const latitudes = framingPoints.map(([, latitude]) => latitude);
         const container = map.getContainer();
         const drawerWidth =
           container
@@ -165,7 +182,7 @@ export function MissionPlanner({
               top: 96,
               bottom: 96,
               left: 64,
-              right: Math.min(drawerWidth + 96, container.clientWidth / 2),
+              right: Math.min(drawerWidth + 96, container.clientWidth - 100),
             },
             maxZoom: 18,
             duration: 350,
@@ -178,7 +195,27 @@ export function MissionPlanner({
   });
 
   useEffect(() => {
-    if (!map || !editing || !isOpen || step !== 'route') return;
+    if (!map || !placingOnMap || !isOpen) {
+      setHoverCoordinate(null);
+      return;
+    }
+    const updateHover = (event: MapMouseEvent) => {
+      const original = event.originalEvent;
+      if (!(original instanceof MouseEvent)) return;
+      const bounds = map.getContainer().getBoundingClientRect();
+      setHoverCoordinate({ longitude: event.lngLat.lng, latitude: event.lngLat.lat, x: original.clientX - bounds.left, y: original.clientY - bounds.top });
+    };
+    const clearHover = () => setHoverCoordinate(null);
+    map.on('mousemove', updateHover);
+    map.on('mouseout', clearHover);
+    return () => {
+      map.off('mousemove', updateHover);
+      map.off('mouseout', clearHover);
+    };
+  }, [map, placingOnMap, isOpen]);
+
+  useEffect(() => {
+    if (!map || (!editing && !placingWaypoints) || !isOpen || step !== 'route') return;
     const canvas = map.getCanvas();
     const previousCursor = canvas.style.cursor;
     canvas.style.cursor = 'crosshair';
@@ -188,7 +225,7 @@ export function MissionPlanner({
       map.off('click', listener);
       canvas.style.cursor = previousCursor;
     };
-  }, [map, editing, isOpen, step]);
+  }, [map, editing, placingWaypoints, isOpen, step]);
 
   const boundary = useMemo(
     () => ({
@@ -198,19 +235,33 @@ export function MissionPlanner({
     }),
     [gridPlan.boundary],
   );
-  const switchType = (type: MissionType) => {
-    setEditing(false);
-    update({ type });
+  const frameVessel = (zoom: number) => {
+    if (!map) return;
+    const container = map.getContainer();
+    const drawerWidth = container.querySelector('.mission-drawer-popup')?.getBoundingClientRect().width ?? 384;
+    const occupied = Math.min(drawerWidth + 32, container.clientWidth - 80);
+    map.easeTo({
+      center: vessel.simulation.getFrame().position,
+      zoom,
+      offset: [-occupied / 2, 0],
+      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
+    });
   };
 
   const editRoute = () => {
     setStep('route');
     setEditing(draft.type === 'waypoint' || !draft.grid.center);
+    if (map && placementView.current) {
+      map.easeTo({ ...placementView.current, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300 });
+    } else if (map && hasRoute) {
+      fitMissionRoute(map, [vessel.simulation.getFrame().position, ...coordinates, ...(draft.type === 'grid' ? gridPlan.boundary : [])]);
+    } else {
+      frameVessel(Math.min(map?.getZoom() ?? ROUTE_PLANNING_ZOOM, ROUTE_PLANNING_ZOOM));
+    }
   };
   const discardDraft = () => {
+    discardConfirmed.current = true;
     setDiscardOpen(false);
-    setEditing(false);
-    onCancel();
   };
   const routeReady =
     hasRoute && (draft.type !== 'grid' || (!gridPlan.error && !editing));
@@ -223,7 +274,7 @@ export function MissionPlanner({
         map &&
         createPortal(
           <div className='pointer-events-none absolute top-4 right-120 left-4 z-50 flex justify-center'>
-            <div className='max-w-full rounded-xl border bg-background px-4 py-3 text-foreground shadow-sm'>
+            <div className='max-w-full rounded-xl border border-white/15 bg-neutral-900 px-4 py-3 text-neutral-100 shadow-md'>
               <p role='status' className='text-sm font-medium'>
                 {draft.type === 'grid'
                   ? 'Click the map to place the center of your grid.'
@@ -235,6 +286,23 @@ export function MissionPlanner({
           </div>,
           map.getContainer(),
         )}
+      {map && placingOnMap && hoverCoordinate && createPortal(
+        <div
+          aria-hidden='true'
+          className='pointer-events-none absolute z-70 rounded-md border border-teal-400/30 bg-neutral-900 px-2.5 py-2 text-neutral-100 shadow-md'
+          style={{
+            left: hoverCoordinate.x,
+            top: hoverCoordinate.y,
+            transform: `translate(${hoverCoordinate.x > map.getContainer().clientWidth - 240 ? 'calc(-100% - 10px)' : '10px'}, ${hoverCoordinate.y > map.getContainer().clientHeight - 72 ? 'calc(-100% - 10px)' : '10px'})`,
+          }}
+        >
+          <span className='mb-1 block text-[9px] font-medium uppercase tracking-[0.09em] text-teal-300'>{placingGrid ? 'Place grid center' : 'Place waypoint'}</span>
+          <span className='block font-mono text-xs tabular-nums'>
+            {coordinateText([hoverCoordinate.longitude, hoverCoordinate.latitude])}
+          </span>
+        </div>,
+        map.getContainer(),
+      )}
       {isOpen && draft.type === 'grid' && gridPlan.boundary.length > 0 && (
         <MapGeoJSON
           id={`mission-area-${vessel.id}`}
@@ -272,6 +340,8 @@ export function MissionPlanner({
             key={`${index}-${point.join(',')}`}
             longitude={point[0]}
             latitude={point[1]}
+            draggable={step === 'route'}
+            onDragEnd={({ lng, lat }) => update({ waypoints: draft.waypoints.map((current, i) => i === index ? [lng, lat] : current) })}
           >
             <MarkerContent>
               <span
@@ -313,50 +383,38 @@ export function MissionPlanner({
           {getVesselIdentity(vessel)}
         </Drawer.Description>
         <Drawer.Close
-          aria-label='Close mission planner'
+          ref={closeButton}
+          aria-label='Close mission planner and keep draft'
+          title='Close and keep draft'
           className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`}
         >
           <X className='size-4' />
         </Drawer.Close>
-        <div className='mt-3 flex items-center gap-2 text-[11px]'>
-          <span
-            className={`rounded-full px-2.5 py-0.5 font-medium ${status.colors}`}
-          >
-            {status.label}
-          </span>
-        </div>
       </header>
 
       <div
         ref={attachScrollArea}
         className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.5rem-var(--drawer-scrollbar-inset,0px))] pb-6 scrollbar-thin scrollbar-gutter-both'
       >
-        <section aria-label='Vessel telemetry' className='border-t'>
-          <VesselTelemetry
-            snapshot={snapshot}
-            speedLabel='Speed'
-            waypointLabel='Next waypoint'
-          />
-          <VesselFuel tanks={vessel.fuelTanks} />
-        </section>
-
-        <section className='mt-6 border-t pt-4'>
+        <section className='border-t pt-4'>
           {step === 'type' ? (
             <>
+              <p className='mb-4 text-xs leading-relaxed text-muted-foreground'>Choose a mission type to start placing it on the map.</p>
               <h3 id={typeLabelId} className='mb-3 text-sm font-medium'>
                 Mission type
               </h3>
-              <RadioGroup
-                value={draft.type}
-                onValueChange={switchType}
-                aria-labelledby={typeLabelId}
-                className='grid grid-cols-2 gap-2'
-              >
+              <div aria-labelledby={typeLabelId} className='grid grid-cols-2 gap-2'>
                 {missionTypes.map(({ value, label, description, Icon }) => (
-                  <Radio.Root
+                  <Button
                     key={value}
-                    value={value}
-                    className='flex min-w-0 cursor-pointer flex-col items-start rounded-lg border p-3 text-left outline-none data-checked:border-foreground data-checked:bg-muted/60 data-disabled:cursor-default focus-visible:ring-2 focus-visible:ring-ring'
+                    onClick={() => {
+                      update({ type: value });
+                      placementView.current = null;
+                      setStep('route');
+                      setEditing(value === 'waypoint' || !draft.grid.center);
+                      frameVessel(Math.min(map?.getZoom() ?? ROUTE_PLANNING_ZOOM, ROUTE_PLANNING_ZOOM));
+                    }}
+                    className='flex min-w-0 cursor-pointer flex-col items-start rounded-lg border p-3 text-left outline-none hover:border-foreground hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring'
                   >
                     <span className='flex w-full items-center gap-2 text-xs font-medium'>
                       <Icon className='size-4' />
@@ -365,9 +423,9 @@ export function MissionPlanner({
                     <span className='mt-1.5 text-[10px] leading-relaxed text-muted-foreground'>
                       {description}
                     </span>
-                  </Radio.Root>
+                  </Button>
                 ))}
-              </RadioGroup>
+              </div>
             </>
           ) : (
             <div className='flex items-center justify-between gap-3'>
@@ -389,6 +447,9 @@ export function MissionPlanner({
 
         {step === 'route' && (
           <section className='mt-5' aria-label='Build mission route'>
+            <p className='mb-3 text-xs leading-relaxed text-muted-foreground'>
+              {draft.type === 'waypoint' ? 'Click to add points. Drag a numbered point to move it, or remove it below.' : 'Place the grid on the map, then adjust its dimensions and spacing.'}
+            </p>
             {draft.type === 'waypoint' ? (
               <>
                 {draft.waypoints.length > 0 && (
@@ -498,7 +559,7 @@ export function MissionPlanner({
           </section>
         )}
 
-        {(step === 'speeds' || reviewing) && (
+        {hasRoute && (
           <>
             <section
               aria-label='Route summary'
@@ -511,7 +572,7 @@ export function MissionPlanner({
                     {distance.toFixed(2)} nm
                   </dd>
                 </div>
-                <div>
+                <div aria-live='polite' aria-atomic='true'>
                   <dt className='text-muted-foreground'>Est. travel time</dt>
                   <dd className='mt-1 text-sm font-medium'>{duration}</dd>
                 </div>
@@ -523,14 +584,15 @@ export function MissionPlanner({
                       </dt>
                       <dd className='mt-1 font-medium'>{draft.speed} kn</dd>
                     </div>
-                    <div>
+                    {hasTurns && <div>
                       <dt className='text-muted-foreground'>Turn speed</dt>
                       <dd className='mt-1 font-medium'>{draft.turnSpeed} kn</dd>
-                    </div>
+                    </div>}
                   </>
                 )}
               </dl>
-              {draft.type === 'grid' && (
+              <p className='mt-3 text-[10px] leading-relaxed text-muted-foreground'>Time estimate uses straight-line speed; acceleration and turns add time.</p>
+              {draft.type === 'grid' && step !== 'route' && (
                 <dl
                   aria-label='Grid configuration'
                   className='mt-4 grid grid-cols-2 gap-3 border-t pt-4'
@@ -560,17 +622,16 @@ export function MissionPlanner({
                 </dl>
               )}
             </section>
-            {!reviewing && (
+            {step === 'speeds' && (
               <section
                 className='mt-5 rounded-xl bg-muted p-4'
                 aria-label='Mission speeds'
               >
-                <h3 className='text-base font-medium'>Set mission speeds</h3>
                 <p className='mt-1 mb-4 text-xs leading-relaxed text-muted-foreground'>
-                  Choose the speed for straight sections and turns.
+                  {hasTurns ? 'Choose the speed for straight sections and turns.' : 'Choose the travel speed for this leg.'}
                   {' '}Vessel maximum: {vessel.simulation.maxSpeed} kn.
                 </p>
-                <div className='grid grid-cols-2 gap-3'>
+                <div className={hasTurns ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
                   <MissionNumberField
                     label='Straight-line speed'
                     unit='kn'
@@ -578,10 +639,10 @@ export function MissionPlanner({
                     min={0.5}
                     max={vessel.simulation.maxSpeed}
                     step={0.5}
-                    onValueChange={speed => update({ speed })}
+                    onValueChange={speed => update({ speed, ...(!hasTurns && speed !== null ? { turnSpeed: Math.min(draft.turnSpeed ?? 4, speed) } : {}) })}
                     errorId={speedError ? speedErrorId : undefined}
                   />
-                  <MissionNumberField
+                  {hasTurns && <MissionNumberField
                     label='Turn speed'
                     unit='kn'
                     value={draft.turnSpeed}
@@ -590,7 +651,7 @@ export function MissionPlanner({
                     step={0.5}
                     onValueChange={turnSpeed => update({ turnSpeed })}
                     errorId={speedError ? speedErrorId : undefined}
-                  />
+                  />}
                 </div>
                 {speedError && (
                   <p
@@ -603,111 +664,109 @@ export function MissionPlanner({
                 )}
               </section>
             )}
-            {/* {reviewing && (
-              <p className='mt-3 text-xs leading-relaxed text-muted-foreground'>
-                This draft has not been sent to the vessel.
-              </p>
-            )} */}
+            {reviewing && (
+              <div className='mt-5 space-y-3'>
+                <div className='flex flex-wrap gap-2'>
+                  <Button className={secondaryButton} onClick={() => { setReturnToReview(true); editRoute(); }}>Edit route</Button>
+                  <Button className={secondaryButton} onClick={() => { setReturnToReview(true); setStep('speeds'); }}>Edit speeds</Button>
+                  <Button className={secondaryButton} onClick={() => map && fitMissionRoute(map, [vessel.simulation.getFrame().position, ...coordinates, ...(draft.type === 'grid' ? gridPlan.boundary : [])])}>Show route</Button>
+                </div>
+                <p className='text-xs leading-relaxed text-muted-foreground'>Check the full route on the map. Deploying starts this vessel moving immediately.</p>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+      {(step !== 'type' || hasPlannedPoints) && <footer className='shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
         {deploymentError && <p role='alert' className='mb-2 text-xs text-destructive'>{deploymentError}</p>}
-        {(step !== 'type' || hasPlannedPoints) && (
-          <div className='mb-2 flex items-center justify-between gap-3'>
-            {step !== 'type' && (
-              <Button
-                type='button'
-                className='min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
-                onClick={() => {
-                  if (step === 'speeds') editRoute();
-                  else {
-                    setEditing(false);
-                    setStep(reviewing ? 'speeds' : 'type');
-                  }
-                }}
-              >
-                {reviewing
-                  ? 'Back to speeds'
-                  : step === 'speeds'
-                    ? 'Back to route'
-                    : 'Back to mission type'}
-              </Button>
-            )}
-            {hasPlannedPoints && (
-              <Button
-                type='button'
-                className='ml-auto min-h-9 cursor-pointer rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring'
-                onClick={() => setDiscardOpen(true)}
-              >
-                Cancel planning
-              </Button>
-            )}
-          </div>
+        {step !== 'type' && (
+          <Button
+            type='button'
+            className='mb-2 flex min-h-10 w-full cursor-pointer items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'
+            onClick={() => {
+              setReturnToReview(false);
+              if (step === 'speeds') editRoute();
+              else {
+                setEditing(false);
+                setStep(reviewing ? 'speeds' : 'type');
+              }
+            }}
+          >
+            {reviewing ? 'Back to speeds' : step === 'speeds' ? 'Back to route' : 'Back to mission type'}
+          </Button>
         )}
-        <Button
+        {step !== 'type' && <Button
           type='button'
           disabled={
             step === 'route'
               ? !routeReady
-              : step !== 'type' && !canReviewMission(draft, vessel.simulation.maxSpeed)
+              : !canReviewMission(draft, vessel.simulation.maxSpeed)
           }
           className='flex py-2.5 w-full cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40'
           onClick={() => {
-            if (step === 'type') {
-              editRoute();
-              return;
-            }
             setEditing(false);
-            if (step === 'route') setStep('speeds');
+            if (step === 'route') {
+              setStep(returnToReview ? 'review' : 'speeds');
+              setReturnToReview(false);
+              if (!hasTurns && draft.speed !== null && draft.speed > 0) update({ turnSpeed: Math.min(draft.turnSpeed && draft.turnSpeed > 0 ? draft.turnSpeed : 4, draft.speed) });
+              if (map) {
+                const center = map.getCenter();
+                placementView.current = { center: [center.lng, center.lat], zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
+                fitMissionRoute(map, [vessel.simulation.getFrame().position, ...coordinates, ...(draft.type === 'grid' ? gridPlan.boundary : [])]);
+              }
+            }
             else if (reviewing) {
               if (!onDeploy(draft)) setDeploymentError('Unable to deploy. Check the route and speeds, and make sure this vessel has no mission in progress.');
-            } else setStep('review');
+            } else {
+              setStep('review');
+              setReturnToReview(false);
+              if (map) fitMissionRoute(map, [vessel.simulation.getFrame().position, ...coordinates, ...(draft.type === 'grid' ? gridPlan.boundary : [])]);
+            }
           }}
         >
-          {step === 'type'
-            ? draft.type === 'waypoint'
-              ? 'Choose waypoints'
-              : 'Define grid area'
-            : step === 'route'
-              ? 'Set mission speeds'
-              : reviewing
-                ? 'Deploy'
-                : 'Review mission'}
-        </Button>
-        {step !== 'type' && !placingWaypoints && (
-          <p className='mt-2 text-center text-[10px] text-muted-foreground'>
-            Drafts stay available while this session is open.
-          </p>
-        )}
-      </footer>
-      <AlertDialog.Root open={discardOpen} onOpenChange={setDiscardOpen}>
+          {step === 'route' ? returnToReview ? 'Return to review' : 'Set mission speeds' : reviewing ? 'Deploy mission' : returnToReview ? 'Return to review' : 'Review mission'}
+        </Button>}
+
+      </footer>}
+      <AlertDialog.Root
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        onOpenChangeComplete={open => {
+          if (!open && discardConfirmed.current) {
+            discardConfirmed.current = false;
+            setEditing(false);
+            onCancel();
+          }
+        }}
+      >
         <AlertDialog.Portal container={map?.getContainer()}>
-          <AlertDialog.Backdrop className='fixed inset-0 z-80 bg-black/30' />
+          <AlertDialog.Backdrop className='mission-discard-backdrop fixed inset-0 z-80 bg-black/30' />
           <AlertDialog.Viewport className='fixed inset-0 z-90 flex items-center justify-center p-4'>
             <AlertDialog.Popup
-              finalFocus={isOpen}
-              className='w-full max-w-sm rounded-2xl border bg-background p-6 text-foreground shadow-xl outline-none'
+              initialFocus={keepPlanningButton}
+              finalFocus={() => discardConfirmed.current ? false : (closeButton.current ?? false)}
+              className='mission-discard-dialog w-full max-w-sm rounded-lg border border-white/15 bg-neutral-900 p-6 text-neutral-100 shadow-md outline-none'
             >
               <AlertDialog.Title className='text-base font-medium'>
-                Discard this mission draft?
+                Discard mission plan?
               </AlertDialog.Title>
-              <AlertDialog.Description className='mt-2 text-sm leading-relaxed text-muted-foreground'>
-                Your planned route and speed settings will be removed.
+              <AlertDialog.Description className='mt-2 text-sm leading-relaxed text-neutral-400'>
+                The mission type, route, and speed settings for <span className='whitespace-nowrap font-medium text-neutral-100'>{vessel.id}</span> will be removed.
               </AlertDialog.Description>
               <div className='mt-6 flex justify-end gap-2'>
                 <AlertDialog.Close
+                  ref={keepPlanningButton}
                   render={<Button />}
-                  className={secondaryButton}
+                  className='min-h-9 cursor-pointer rounded-md border border-transparent bg-transparent px-3 text-xs font-medium text-[#bcbcb7] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-white/5 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'
                 >
                   Keep planning
                 </AlertDialog.Close>
                 <Button
                   onClick={discardDraft}
-                  className='min-h-9 cursor-pointer rounded-md bg-destructive px-3 text-xs font-medium text-white focus-visible:outline-2 focus-visible:outline-ring'
+                  className='min-h-9 cursor-pointer rounded-md border border-transparent bg-[#a4443e] px-3 text-xs font-medium text-[#fff1ec] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-[#be4f48] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300'
                 >
-                  Discard draft
+                  Discard plan
                 </Button>
               </div>
             </AlertDialog.Popup>

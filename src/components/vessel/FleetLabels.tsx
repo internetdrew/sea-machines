@@ -1,25 +1,29 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useMap } from '@/components/ui/map';
 import { placeVesselLabel } from '@/lib/vessel/label-placement';
 import type { LabelRect, LabelSide } from '@/lib/vessel/label-placement';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 // Separate viewport overlay: vessel headings never rotate the identity text.
-export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
+export function FleetLabels({ vessels, selectedVesselId, planningVesselId }: { vessels: readonly Vessel[]; selectedVesselId: string | null; planningVesselId: string | null }) {
   const { map, isLoaded } = useMap();
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!map || !isLoaded || !root.current) return;
     const overlay = root.current;
     const entries = vessels.map(vessel => {
       const label = document.createElement('div');
       label.className = 'vessel-identity';
+      label.dataset.vesselId = vessel.id;
+      const content = document.createElement('div');
+      content.className = 'vessel-identity-content';
       const fleetId = document.createElement('span');
       fleetId.textContent = vessel.id;
       const series = document.createElement('span');
       series.className = 'vessel-identity-series';
       series.textContent = vessel.series.label;
-      label.append(fleetId, series);
+      content.append(fleetId, series);
+      label.append(content);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       line.classList.add('vessel-identity-leader');
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -74,13 +78,35 @@ export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
     const unsubscribe = vessels.map(vessel => vessel.simulation.subscribeFrames(update));
     map.on('move', update);
     map.on('resize', update);
+    const resizeObserver = new ResizeObserver(update);
+    entries.forEach(({ label }) => resizeObserver.observe(label));
     update();
     return () => {
+      resizeObserver.disconnect();
       unsubscribe.forEach(cleanup => cleanup());
       map.off('move', update);
       map.off('resize', update);
       entries.forEach(({ label, line }) => { label.remove(); line.remove(); });
     };
   }, [map, isLoaded, vessels]);
+  useLayoutEffect(() => {
+    if (!root.current) return;
+    // Preserve the badge nodes; only their content and target dimensions change.
+    const labels = [...root.current.querySelectorAll<HTMLElement>('.vessel-identity')];
+    const targets = labels.flatMap(label => {
+      const vessel = vessels.find(vessel => vessel.id === label.dataset.vesselId);
+      const content = label.querySelector<HTMLElement>('.vessel-identity-content');
+      const series = label.querySelector<HTMLElement>('.vessel-identity-series');
+      if (!vessel || !content || !series) return [];
+      label.dataset.selected = String(selectedVesselId === vessel.id);
+      series.textContent = vessel.series.label + (planningVesselId === vessel.id ? ' · Planning' : '');
+      return [{ label, content }];
+    });
+    const sizes = targets.map(({ label, content }) => ({ label, width: content.offsetWidth + 18, height: content.offsetHeight + 12 }));
+    sizes.forEach(({ label, width, height }) => {
+      label.style.width = `${width}px`;
+      label.style.height = `${height}px`;
+    });
+  }, [map, isLoaded, vessels, selectedVesselId, planningVesselId]);
   return <div ref={root} className='vessel-identities' aria-hidden='true' />;
 }

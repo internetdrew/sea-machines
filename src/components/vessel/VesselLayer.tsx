@@ -20,12 +20,16 @@ import type { Vessel } from '@/lib/vessel/vessel';
 
 type Props = VesselDisplayOptions & {
   vessel: Vessel;
+  selected: boolean;
+  onSelectionChange: (id: string, open: boolean) => void;
   missionDrawer: Drawer.Handle<MissionDrawerPayload>;
   onPan: () => void;
 };
 
 export function VesselLayer({
   vessel,
+  selected,
+  onSelectionChange,
   missionDrawer,
   follow,
   showRangeRings,
@@ -88,6 +92,7 @@ export function VesselLayer({
           openingDrawer.current = false;
         }
         setPopoverOpen(open);
+        onSelectionChange(vessel.id, open);
       }}
     >
       <ActiveMissionLayer vesselId={vessel.id} frame={snapshot} />
@@ -108,7 +113,7 @@ export function VesselLayer({
               viewBox='0 0 144 144'
               fill='none'
               className='vessel-mission-brackets'
-              data-engaged={markerHovered || markerFocused || popoverOpen}
+              data-engaged={markerHovered || markerFocused || selected}
             >
               <path
                 d='M24 2H2V24M120 2H142V24M2 120V142H24M120 142H142V120'
@@ -149,7 +154,7 @@ export function VesselLayer({
           >
             <svg
               data-vessel-hull={vessel.id}
-              data-selected={popoverOpen}
+              data-selected={selected}
               viewBox='0 0 100 220'
               aria-hidden='true'
               dangerouslySetInnerHTML={{

@@ -1,4 +1,5 @@
 export type Coordinate = [number, number];
+export const DEFAULT_MAP_ZOOM = 12.5;
 // Demo start in Massachusetts Bay, outside Boston Harbor.
 export const INITIAL_POSITION = { longitude: -70.85, latitude: 42.31 };
 // Heading in degrees clockwise from north: 0=N, 90=E, 180=S, 270=W.

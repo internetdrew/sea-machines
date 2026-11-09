@@ -118,6 +118,17 @@ export function missionDistance(draft: MissionDraft) {
   return distance;
 }
 
+// Match the simulator's turn threshold; collinear points need no turn control.
+export function missionHasTurns(draft: MissionDraft): boolean {
+  const points = missionCoordinates(draft);
+  for (let i = 1; i < points.length - 1; i++) {
+    if (distanceNm(points[i - 1], points[i]) < 1e-8 || distanceNm(points[i], points[i + 1]) < 1e-8) continue;
+    const change = Math.abs(((bearingBetween(points[i], points[i + 1]) - bearingBetween(points[i - 1], points[i]) + 540) % 360) - 180);
+    if (change > 5) return true;
+  }
+  return false;
+}
+
 export function missionSpeedError(draft: MissionDraft, maxSpeed = Infinity): string | null {
   if (draft.speed === null || !Number.isFinite(draft.speed) || draft.speed <= 0) return 'Enter a straight-line speed greater than 0 kn.';
   if (draft.speed > maxSpeed) return `Straight-line speed must not exceed the vessel maximum of ${maxSpeed} kn.`;

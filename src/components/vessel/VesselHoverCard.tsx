@@ -23,16 +23,12 @@ export function VesselHoverCard({
   const resetCopy = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const [pressPulse, setPressPulse] = useState(false);
-  const pressStarted = useRef<number | null>(null);
-  const releasePulse = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       clearTimeout(resetCopy.current);
-      clearTimeout(releasePulse.current);
     };
   }, []);
   const copyPosition = async () => {
@@ -90,8 +86,13 @@ export function VesselHoverCard({
 
   return (
     <>
-      <div className='flex items-center justify-between gap-3'>
-        <p className='font-semibold tracking-tight'>{vessel.id}</p>
+      <div className='flex items-start justify-between gap-3'>
+        <div className='min-w-0'>
+          <p className='font-semibold tracking-tight'>{vessel.id}</p>
+          <p className='mt-0.5 text-xs font-normal text-neutral-400'>
+            {getVesselDisplayName(vessel)}
+          </p>
+        </div>
         <div className='flex items-center gap-3.5'>
           <p
             className={`shrink-0 text-xs font-medium ${active ? (snapshot.playing ? 'text-teal-300' : 'text-amber-400') : 'text-neutral-400'}`}
@@ -107,9 +108,6 @@ export function VesselHoverCard({
           {headerAction}
         </div>
       </div>
-      <p className='mt-0.5 text-xs font-normal text-neutral-400'>
-        {getVesselDisplayName(vessel)}
-      </p>
       <dl className='mt-5 grid grid-cols-2 gap-x-4 text-xs tabular-nums'>
         <div className='min-w-0'>
           <dt className='text-neutral-400'>Speed</dt>
@@ -127,27 +125,7 @@ export function VesselHoverCard({
       <div className='relative mt-5'>
         <button
           type='button'
-          data-press-pulse={pressPulse}
-          onPointerDown={event => {
-            if (event.button === 0) pressStarted.current = performance.now();
-          }}
-          onPointerCancel={() => {
-            pressStarted.current = null;
-            clearTimeout(releasePulse.current);
-            setPressPulse(false);
-          }}
-          onClick={event => {
-            const started = pressStarted.current;
-            pressStarted.current = null;
-            // Trackpad taps can emit a click without a perceptible :active phase.
-            // Only extend quick pointer presses; keyboard and held clicks stay native.
-            if (event.detail > 0 && (started === null || performance.now() - started < 100)) {
-              clearTimeout(releasePulse.current);
-              setPressPulse(true);
-              releasePulse.current = setTimeout(() => setPressPulse(false), 120);
-            }
-            void copyPosition();
-          }}
+          onClick={copyPosition}
           aria-label='Copy vessel position, latitude and longitude'
           className='vessel-position-copy group relative isolate block w-full cursor-pointer rounded text-left before:pointer-events-none before:absolute before:-inset-1.5 before:-z-10 before:rounded-md before:content-[""] focus-visible:outline-2 focus-visible:outline-offset-6 focus-visible:outline-neutral-100'
         >

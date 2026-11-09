@@ -11,7 +11,10 @@
   color: #4b9992;
   opacity: 0.3;
   transform-origin: center;
-  transition: transform 150ms cubic-bezier(0.19, 1, 0.22, 1), color 120ms ease, opacity 120ms ease;
+  transition:
+    transform 150ms cubic-bezier(0.19, 1, 0.22, 1),
+    color 120ms ease,
+    opacity 120ms ease;
 }
 
 .vessel-mission-brackets[data-engaged='true'] {
@@ -317,7 +320,10 @@
   opacity: 0;
   filter: blur(2px);
   transform: scale(0.25);
-  transition: opacity 250ms ease-in-out, filter 250ms ease-in-out, transform 250ms ease-in-out;
+  transition:
+    opacity 250ms ease-in-out,
+    filter 250ms ease-in-out,
+    transform 250ms ease-in-out;
 }
 .vessel-copy-icon-swap[data-copied='false'] [data-icon='copy'],
 .vessel-copy-icon-swap[data-copied='true'] [data-icon='check'] {
@@ -344,7 +350,7 @@
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
   filter: none;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E');
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus {
   box-shadow: none;
@@ -357,24 +363,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:hover {
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
-  }
-}
-
-/* Press acknowledges input; green confirmation remains tied to copy success. */
-.vessel-position-copy:active::before,
-.vessel-position-copy[data-press-pulse='true']::before {
-  opacity: 1;
-  transition: opacity 100ms ease;
-}
-.vessel-position-copy:focus-visible:active::before {
-  opacity: 1;
-  transition: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .vessel-position-copy:active::before,
-  .vessel-position-copy[data-press-pulse='true']::before {
-    transition: none;
+    background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E');
   }
 }
 
@@ -406,6 +395,57 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ui-close-button::before {
+    transition: none;
+  }
+}
+
+/* Resize only on badge content changes; geographic positioning stays immediate. */
+.vessel-identity {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition:
+    width 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.vessel-identity-content {
+  width: max-content;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-identity {
+    transition: none;
+  }
+}
+
+/* Confirmation and backdrop share timing; teardown waits for Base UI completion. */
+.mission-discard-backdrop,
+.mission-discard-dialog {
+  opacity: 1;
+  transition:
+    opacity 200ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    transform 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+.mission-discard-dialog {
+  transform: scale(1);
+}
+.mission-discard-backdrop[data-starting-style],
+.mission-discard-backdrop[data-ending-style],
+.mission-discard-dialog[data-starting-style],
+.mission-discard-dialog[data-ending-style] {
+  opacity: 0;
+}
+.mission-discard-dialog[data-starting-style],
+.mission-discard-dialog[data-ending-style] {
+  transform: scale(0.98);
+}
+.mission-discard-backdrop[data-ending-style],
+.mission-discard-dialog[data-ending-style] {
+  transition-duration: 160ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-discard-backdrop,
+  .mission-discard-dialog {
     transition: none;
   }
 }

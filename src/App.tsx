@@ -12,7 +12,7 @@ import { FleetLabels } from '@/components/vessel/FleetLabels';
 import { VesselLayer } from '@/components/vessel/VesselLayer';
 import { useFleet } from '@/lib/vessel/use-fleet';
 import { getFleetBounds } from '@/lib/vessel/fleet-bounds';
-import { INITIAL_CENTER } from '@/lib/vessel/navigation';
+import { DEFAULT_MAP_ZOOM, INITIAL_CENTER } from '@/lib/vessel/navigation';
 
 function App() {
   const mapRef = useRef<MapInstance | null>(null);
@@ -24,6 +24,16 @@ function App() {
   const [missionDrawer] = useState(() =>
     Drawer.createHandle<MissionDrawerPayload>(),
   );
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
+  const [drawerSelection, setDrawerSelection] = useState<{ id: string; planning: boolean } | null>(null);
+  const selectVessel = useCallback((id: string, open: boolean) => {
+    setSelectedVesselId(current => open ? id : current === id ? null : current);
+  }, []);
+  const drawerChanged = useCallback((id: string | null, planning: boolean) => {
+    setDrawerSelection(id ? { id, planning } : null);
+    if (!id) setSelectedVesselId(null);
+  }, []);
+  const activeVesselId = drawerSelection?.id ?? selectedVesselId;
   const [showRangeRings, setShowRangeRings] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
   const [follow, setFollow] = useState(false);
@@ -34,7 +44,7 @@ function App() {
     stopFollowing();
     mapRef.current.fitBounds(bounds, {
       padding: 80,
-      maxZoom: 12.5,
+      maxZoom: DEFAULT_MAP_ZOOM,
       bearing: 0,
       pitch: 0,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
@@ -45,21 +55,23 @@ function App() {
       <Map
         ref={mapRef}
         center={INITIAL_CENTER}
-        zoom={12.5}
+        zoom={DEFAULT_MAP_ZOOM}
         bounds={initialFleetBounds}
-        fitBoundsOptions={{ padding: 80, maxZoom: 12.5 }}
+        fitBoundsOptions={{ padding: 80, maxZoom: DEFAULT_MAP_ZOOM }}
         theme='dark'
       >
         {showSeamarks && <SeamarkLayer />}
         {vessels.map((vessel, index) => <VesselLayer
           key={vessel.id}
           vessel={vessel}
+          selected={activeVesselId === vessel.id}
+          onSelectionChange={selectVessel}
           missionDrawer={missionDrawer}
           follow={index === 0 && follow}
-          showRangeRings={showRangeRings}
+          showRangeRings={showRangeRings && !drawerSelection?.planning}
           onPan={stopFollowing}
         />)}
-        <FleetLabels vessels={vessels} />
+        <FleetLabels vessels={vessels} selectedVesselId={activeVesselId} planningVesselId={drawerSelection?.planning ? drawerSelection.id : null} />
         <NavigationTooltipProvider delay={350}>
         <div className='map-toolbar text-neutral-100 [--background:#262626] [--foreground:#f5f5f5] [--accent:#333333] [--border:#ffffff1f] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen onFitFleet={fitFleet} />
@@ -71,7 +83,7 @@ function App() {
           />
         </div>
         </NavigationTooltipProvider>
-        <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} />
+        <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} onSelectionChange={drawerChanged} />
       </Map>
     </main>
   );
