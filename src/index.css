@@ -186,7 +186,7 @@
     box-sizing: content-box;
   }
   .maplibregl-ctrl-attrib-button {
-    @apply bg-transparent! dark:invert;
+    @apply bg-transparent!;
     top: 50% !important;
     transform: translateY(-50%);
     background-position: center;
@@ -280,7 +280,7 @@
 }
 
 .vessel-position-copy::before {
-  background: rgb(255 255 255 / 2.5%);
+  background: rgb(255 255 255 / 6%);
   opacity: 0;
   transition: opacity 120ms ease;
 }
@@ -289,12 +289,17 @@
   transition: opacity 120ms ease;
 }
 @media (hover: hover) and (pointer: fine) {
-  .vessel-position-copy:hover::before,
+  .vessel-position-copy:hover::before {
+    opacity: 0.416667;
+  }
   .vessel-position-copy:hover .vessel-position-copy-icon {
     opacity: 1;
   }
 }
-.vessel-position-copy:focus-visible::before,
+.vessel-position-copy:focus-visible::before {
+  opacity: 0.416667;
+  transition: none;
+}
 .vessel-position-copy:focus-visible .vessel-position-copy-icon {
   opacity: 1;
   transition: none;
@@ -337,6 +342,38 @@
   --muted-foreground: #b5b5b5;
   --border: #ffffff1f;
 }
-.maplibregl-ctrl-attrib-button {
-  filter: invert(1);
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
+  filter: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus {
+  box-shadow: none;
+  outline: none;
+}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+@media (hover: hover) and (pointer: fine) {
+  .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:hover {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+  }
+}
+
+/* Press acknowledges input; green confirmation remains tied to copy success. */
+.vessel-position-copy:active::before,
+.vessel-position-copy[data-press-pulse='true']::before {
+  opacity: 1;
+  transition: opacity 100ms ease;
+}
+.vessel-position-copy:focus-visible:active::before {
+  opacity: 1;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-position-copy:active::before,
+  .vessel-position-copy[data-press-pulse='true']::before {
+    transition: none;
+  }
 }
