@@ -504,3 +504,28 @@
   outline: 2px solid #a3c6c9;
   outline-offset: 1px;
 }
+
+
+/* Paired speed assemblies wrap naturally when the drawer becomes narrow. */
+.mission-speed-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 10px 20px;
+  margin-top: 12px;
+}
+.mission-speed-pair .mission-speed-control { min-width: 0; padding: 6px 0; }
+.mission-speed-pair .mission-speed-control + .mission-speed-control { margin-top: 0; }
+.mission-speed-pair .mission-speed-heading { display: block; }
+.mission-speed-pair .mission-speed-heading label { font-size: 11px; }
+.mission-speed-pair .mission-speed-readout { margin-top: 7px; }
+.mission-speed-pair .mission-speed-value {
+  width: 2.4ch;
+  padding-inline: 0;
+  text-align: left;
+  font-size: 19px;
+}
+.mission-speed-pair .mission-speed-readout > span { font-size: 10px; }
+.mission-speed-pair .mission-speed-rail { margin-top: 2px; }
+.mission-speed-pair .mission-speed-limits { display: none; }
+.mission-speed-pair .mission-speed-slider::-webkit-slider-thumb { width: 12px; height: 25px; }
+.mission-speed-pair .mission-speed-slider::-moz-range-thumb { width: 12px; height: 25px; }

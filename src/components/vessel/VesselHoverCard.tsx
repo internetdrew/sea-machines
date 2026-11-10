@@ -1,3 +1,4 @@
+import { missionProgressPercent } from '@/lib/vessel/mission';
 import { getVesselDisplayName } from '@/lib/vessel/vessel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -55,9 +56,7 @@ export function VesselHoverCard({
       ) ?? 0,
     [mission],
   );
-  const progress = total
-    ? Math.min(100, Math.round((snapshot.distance / total) * 100))
-    : 0;
+  const progress = missionProgressPercent(snapshot.distance, total, snapshot.arrived);
   const active = isMissionInProgress(snapshot);
   const minutes =
     snapshot.playing && snapshot.speed > 0 && snapshot.nextWaypoint

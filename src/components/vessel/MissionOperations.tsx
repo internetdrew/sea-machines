@@ -1,8 +1,8 @@
+import { TextSwap } from '@/components/TextSwap';
 import { useRef } from 'react';
 import type { RefObject } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Button } from '@base-ui/react/button';
-import { Pause, Play } from 'lucide-react';
 import { useMap } from '@/components/ui/map';
 import type { VesselFrame } from '@/lib/vessel/simulation';
 import type { Vessel } from '@/lib/vessel/vessel';
@@ -17,16 +17,15 @@ export function MissionOperations({ vessel, snapshot, compact = false, terminalF
   const { map } = useMap();
   const abortButton = useRef<HTMLButtonElement | null>(null);
   return <AlertDialog.Root>
-    <div className='flex items-center gap-2'>
+    <div className={compact ? 'flex items-center gap-2' : 'flex flex-col gap-2'}>
       <Button
         aria-label={snapshot.playing ? 'Pause mission' : 'Resume mission'}
         onClick={() => vessel.simulation.setPlaying(!vessel.simulation.getFrame().playing)}
-        className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md px-3 font-medium focus-visible:outline-2 focus-visible:outline-ring ${compact ? 'border bg-background text-xs hover:bg-white/[0.08]' : 'flex-1 bg-primary text-sm text-primary-foreground'}`}
+        className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-3 font-medium focus-visible:outline-2 focus-visible:outline-ring ${compact ? 'min-h-10 border bg-background text-xs hover:bg-white/[0.08]' : 'min-h-9 w-full bg-neutral-100 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-offset-2 focus-visible:outline-white'}`}
       >
-        {snapshot.playing ? <Pause className='size-3.5' /> : <Play className='size-3.5' />}
-        {snapshot.playing ? compact ? 'Pause' : 'Pause mission' : compact ? 'Resume' : 'Resume mission'}
+        <TextSwap text={snapshot.playing ? compact ? 'Pause' : 'Pause mission' : compact ? 'Resume' : 'Resume mission'} />
       </Button>
-      <AlertDialog.Trigger ref={abortButton} render={<Button />} aria-label='Abort mission' className='min-h-10 cursor-pointer rounded-md px-3 text-xs text-foreground hover:bg-white/[0.08] hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring'>
+      <AlertDialog.Trigger ref={abortButton} render={<Button />} aria-label='Abort mission' className={compact ? 'min-h-10 cursor-pointer rounded-md px-3 text-xs text-foreground hover:bg-white/[0.08] hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring' : 'flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md border border-transparent bg-[#2b3033] px-3 py-2 text-xs font-medium text-[#bcbcb7] hover:bg-white/10 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'}>
         {compact ? 'Abort' : 'Abort mission'}
       </AlertDialog.Trigger>
     </div>

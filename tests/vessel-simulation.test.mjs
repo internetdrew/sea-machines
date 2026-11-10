@@ -547,3 +547,30 @@ test('a second vessel starts and resets east without moving the original vessel'
   assert.deepEqual(original.getFrame().position, INITIAL_CENTER);
   assert.equal(original.getFrame().mission, null);
 });
+
+test('mission speed pairs apply atomically without resetting route progress or pause state', () => {
+  const { simulation, step } = setup();
+  assert.equal(simulation.setMissionSpeeds(10, 5), false);
+  simulation.deploy(plan());
+  for (let i = 0; i < 120; i++) step();
+  const before = simulation.getFrame();
+  assert.equal(simulation.setMissionSpeeds(10, 5), true);
+  const after = simulation.getFrame();
+  assert.equal(after.mission.speed, 10);
+  assert.equal(after.mission.turnSpeed, 5);
+  assert.equal(after.distance, before.distance);
+  assert.deepEqual(after.position, before.position);
+  assert.equal(after.targetIndex, before.targetIndex);
+  assert.equal(after.playing, before.playing);
+  assert.deepEqual(after.mission.coordinates, before.mission.coordinates);
+  for (const pair of [[5, 6], [0, 1], [10.5, 4], [Infinity, 4], [999, 4]]) {
+    assert.equal(simulation.setMissionSpeeds(...pair), false);
+    assert.equal(simulation.getFrame().mission.speed, 10);
+    assert.equal(simulation.getFrame().mission.turnSpeed, 5);
+  }
+  simulation.setPlaying(false);
+  assert.equal(simulation.setMissionSpeeds(8, 3), true);
+  assert.equal(simulation.getFrame().playing, false);
+  simulation.abort();
+  assert.equal(simulation.setMissionSpeeds(7, 2), false);
+});

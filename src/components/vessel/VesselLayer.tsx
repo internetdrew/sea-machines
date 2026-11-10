@@ -22,6 +22,7 @@ type Props = VesselDisplayOptions & {
   vessel: Vessel;
   selected: boolean;
   planning: boolean;
+  missionDrawerOpen: boolean;
   selectionDisabled: boolean;
   onSelectionChange: (id: string, open: boolean) => void;
   missionDrawer: Drawer.Handle<MissionDrawerPayload>;
@@ -32,6 +33,7 @@ export function VesselLayer({
   vessel,
   selected,
   planning,
+  missionDrawerOpen,
   selectionDisabled,
   onSelectionChange,
   missionDrawer,
@@ -206,7 +208,7 @@ export function VesselLayer({
                   </Popover.Close>
                 }
               />
-              <footer className='mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
+              {!missionDrawerOpen && <footer className='mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
                 <Drawer.Trigger
                   handle={missionDrawer}
                   payload={{
@@ -228,7 +230,7 @@ export function VesselLayer({
                     ? 'View mission'
                     : 'Plan a mission'}
                 </Drawer.Trigger>
-              </footer>
+              </footer>}
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>

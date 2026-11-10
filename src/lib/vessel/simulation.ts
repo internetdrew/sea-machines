@@ -397,6 +397,17 @@ export function createVesselSimulation(
       command();
       return true;
     },
+    setMissionSpeeds(speed: number, nextTurnSpeed: number) {
+      if (!mission || frame.arrived || aborted ||
+        !Number.isInteger(speed) || !Number.isInteger(nextTurnSpeed) ||
+        speed < 1 || speed > propulsion.maxSpeed || nextTurnSpeed < 1 || nextTurnSpeed > speed) return false;
+      cruiseSpeed = speed;
+      turnSpeed = nextTurnSpeed;
+      mission = { ...mission, speed, turnSpeed };
+      rebuildSpeedZones();
+      command();
+      return true;
+    },
     setSpeed(value: number) {
       if (!Number.isFinite(value) || value <= 0) return;
       cruiseSpeed = Math.min(value, propulsion.maxSpeed);

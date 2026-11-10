@@ -1,3 +1,6 @@
+// @refresh reset
+// Simulations contain method closures. Recreate the fleet on Fast Refresh so
+// an updated simulation API cannot be paired with an older retained instance.
 import { useEffect, useState } from 'react';
 import { createVesselSimulation } from './simulation';
 import type { Vessel, VesselDefinition } from './vessel';

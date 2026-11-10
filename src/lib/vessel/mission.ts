@@ -180,3 +180,10 @@ export function createDeployment(draft: MissionDraft, position: Coordinate, maxS
     speed: draft.speed!, turnSpeed: draft.turnSpeed!,
   };
 }
+
+/** Reserve 100% for confirmed arrival, never for rounded near-completion. */
+export function missionProgressPercent(distance: number, total: number, arrived: boolean): number {
+  if (arrived) return 100;
+  if (!Number.isFinite(distance) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(99, Math.floor(distance / total * 100)));
+}

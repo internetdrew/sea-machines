@@ -75,6 +75,7 @@ function App() {
           vessel={vessel}
           selected={activeVesselId === vessel.id}
           planning={drawerSelection?.planning ?? false}
+          missionDrawerOpen={drawerSelection?.id === vessel.id}
           selectionDisabled={drawerSelection?.locked ?? false}
           onSelectionChange={selectVessel}
           missionDrawer={missionDrawer}

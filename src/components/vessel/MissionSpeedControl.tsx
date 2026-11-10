@@ -16,9 +16,9 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
   const fill = limit > min ? (position - min) / (limit - min) * 100 : 0;
   return (
     <div className='mission-speed-control' data-base-ui-swipe-ignore>
-      <div className='flex items-baseline justify-between gap-4'>
+      <div className='mission-speed-heading flex items-baseline justify-between gap-4'>
         <label id={`${id}-label`} htmlFor={id} className='text-xs font-medium text-[#e1e7ea]'>{label}</label>
-        <div className='flex items-baseline gap-1'>
+        <div className='mission-speed-readout flex items-baseline gap-1'>
           <input
             type='number'
             aria-label={`Exact ${label.toLowerCase()} in knots`}
@@ -35,7 +35,7 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
           <span className='text-xs text-[#a8b5bd]'>kn</span>
         </div>
       </div>
-      <div className='mt-[3px] px-[7px]'>
+      <div className='mission-speed-rail mt-[3px] px-[7px]'>
         <input
           id={id}
           type='range'
@@ -48,7 +48,7 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
           style={{ '--speed-fill': `${fill}%` } as CSSProperties}
           className='mission-speed-slider'
         />
-        <div aria-hidden='true' className='flex justify-between text-[10px] text-[#a4b3bc] tabular-nums'>
+        <div aria-hidden='true' className='mission-speed-limits flex justify-between text-[10px] text-[#a4b3bc] tabular-nums'>
           <span>{min}</span><span>{limit}</span>
         </div>
       </div>

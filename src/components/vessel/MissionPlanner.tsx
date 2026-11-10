@@ -31,7 +31,6 @@ import {
   missionCoordinates,
   missionDistance,
   missionSpeedError,
-  missionHasTurns,
 } from '@/lib/vessel/mission';
 import type { MissionDraft } from '@/lib/vessel/mission';
 import type { Coordinate } from '@/lib/vessel/navigation';
@@ -128,7 +127,7 @@ export function MissionPlanner({
       return false;
     });
   }, [isOpen, registerCloseGuard, hasMissionDetails]);
-  const hasTurns = missionHasTurns(draft);
+  const hasTurns = draft.type === 'grid' || draft.waypoints.length > 1;
   const placementView = useRef<{
     center: Coordinate;
     zoom: number;
@@ -685,7 +684,7 @@ export function MissionPlanner({
               </section>
               {step === 'speeds' && (
                 <section className='mt-1' aria-label='Mission speeds'>
-                  <div>
+                  <div className='mission-speed-pair'>
                     <MissionSpeedControl
                       label='Straight-line speed'
                       value={draft.speed}
