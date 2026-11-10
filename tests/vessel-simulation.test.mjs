@@ -574,3 +574,32 @@ test('mission speed pairs apply atomically without resetting route progress or p
   simulation.abort();
   assert.equal(simulation.setMissionSpeeds(7, 2), false);
 });
+
+test('activity captures accepted mission actions without duplicate or internal events', () => {
+  const { simulation } = setup();
+  const activity = simulation.activity;
+  let notifications = 0;
+  const unsubscribe = activity.subscribe(() => notifications++);
+  assert.equal(activity.getSnapshot().length, 0);
+  assert.equal(simulation.setMissionSpeeds(10, 3), false);
+  simulation.setVisible(false);
+  assert.equal(activity.getSnapshot().length, 0);
+  simulation.deploy(plan());
+  simulation.setPlaying(false);
+  simulation.setPlaying(false);
+  simulation.setPlaying(true);
+  simulation.setMissionSpeeds(10, 3);
+  simulation.setMissionSpeeds(10, 3);
+  simulation.abort();
+  simulation.abort();
+  assert.deepEqual(activity.getSnapshot().map(e => e.title), ['Mission aborted', 'Speeds changed', 'Mission resumed', 'Mission paused', 'Waypoint mission deployed']);
+  const change = activity.getSnapshot().find(e => e.speeds);
+  assert.deepEqual(change.speeds, { before: [12, 4], after: [10, 3] });
+  assert.equal(notifications, 5);
+  const saved = activity.getSnapshot();
+  simulation.clearFinishedMission();
+  assert.equal(activity.getSnapshot(), saved);
+  simulation.deploy(plan());
+  assert.equal(activity.getSnapshot()[0].missionId, 2);
+  unsubscribe();
+});

@@ -1,3 +1,4 @@
+import { CONFIRM_BACKDROP_CLASS, CONFIRM_POPUP_CLASS, CONFIRM_CANCEL_CLASS, CONFIRM_DESTRUCTIVE_CLASS } from '@/components/ConfirmationStyles';
 import { MissionSpeedControl } from './MissionSpeedControl';
 import { NumberPopIn } from '@/components/NumberPopIn';
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
@@ -127,7 +128,6 @@ export function MissionPlanner({
       return false;
     });
   }, [isOpen, registerCloseGuard, hasMissionDetails]);
-  const hasTurns = draft.type === 'grid' || draft.waypoints.length > 1;
   const placementView = useRef<{
     center: Coordinate;
     zoom: number;
@@ -689,22 +689,9 @@ export function MissionPlanner({
                       label='Straight-line speed'
                       value={draft.speed}
                       max={vessel.simulation.maxSpeed}
-                      onValueChange={speed =>
-                        update({
-                          speed,
-                          ...(!hasTurns && speed !== null
-                            ? {
-                                turnSpeed: Math.min(
-                                  draft.turnSpeed ?? 4,
-                                  speed,
-                                ),
-                              }
-                            : {}),
-                        })
-                      }
+                      onValueChange={speed => update({ speed })}
                       errorId={speedError ? speedErrorId : undefined}
                     />
-                    {hasTurns && (
                       <MissionSpeedControl
                         label='Turn speed'
                         value={draft.turnSpeed}
@@ -712,7 +699,6 @@ export function MissionPlanner({
                         onValueChange={turnSpeed => update({ turnSpeed })}
                         errorId={speedError ? speedErrorId : undefined}
                       />
-                    )}
                   </div>
                   {speedError && (
                     <p
@@ -745,7 +731,7 @@ export function MissionPlanner({
           )}
           <Button
             type='button'
-            className='mb-2 flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md border border-transparent bg-[#2b3033] px-3 py-2 text-xs font-medium text-[#bcbcb7] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-white/10 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'
+            className='mission-cta mb-2 flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md border border-transparent bg-[#2b3033] px-3 py-2 text-xs font-medium text-[#bcbcb7] hover:bg-white/10 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'
             onClick={() => {
               if (step === 'speeds') editRoute();
               else {
@@ -766,20 +752,11 @@ export function MissionPlanner({
                 ? !routeReady
                 : !canReviewMission(draft, vessel.simulation.maxSpeed)
             }
-            className='flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-40'
+            className='mission-cta flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-40'
             onClick={() => {
               setEditing(false);
               if (step === 'route') {
                 setStep('speeds');
-                if (!hasTurns && draft.speed !== null && draft.speed > 0)
-                  update({
-                    turnSpeed: Math.min(
-                      draft.turnSpeed && draft.turnSpeed > 0
-                        ? draft.turnSpeed
-                        : 4,
-                      draft.speed,
-                    ),
-                  });
                 if (map) {
                   const center = map.getCenter();
                   placementView.current = {
@@ -814,7 +791,7 @@ export function MissionPlanner({
         }}
       >
         <AlertDialog.Portal container={map?.getContainer()}>
-          <AlertDialog.Backdrop className='mission-discard-backdrop fixed inset-0 z-80 bg-black/30' />
+          <AlertDialog.Backdrop className={CONFIRM_BACKDROP_CLASS} />
           <AlertDialog.Viewport className='fixed inset-0 z-90 flex items-center justify-center p-4'>
             <AlertDialog.Popup
               initialFocus={keepPlanningButton}
@@ -823,7 +800,7 @@ export function MissionPlanner({
                   ? false
                   : (closeButton.current ?? false)
               }
-              className='mission-discard-dialog w-full max-w-sm rounded-lg border border-white/15 bg-neutral-900 p-6 text-neutral-100 shadow-md outline-none'
+              className={CONFIRM_POPUP_CLASS}
             >
               <AlertDialog.Title className='text-base font-medium'>
                 Discard mission plan?
@@ -839,13 +816,13 @@ export function MissionPlanner({
                 <AlertDialog.Close
                   ref={keepPlanningButton}
                   render={<Button />}
-                  className='min-h-9 cursor-pointer rounded-md border border-transparent bg-transparent px-3 text-xs font-medium text-[#bcbcb7] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-white/5 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'
+                  className={CONFIRM_CANCEL_CLASS}
                 >
                   Keep planning
                 </AlertDialog.Close>
                 <Button
                   onClick={discardDraft}
-                  className='min-h-9 cursor-pointer rounded-md border border-transparent bg-[#a4443e] px-3 text-xs font-medium text-[#fff1ec] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-[#be4f48] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300'
+                  className={CONFIRM_DESTRUCTIVE_CLASS}
                 >
                   Discard plan
                 </Button>

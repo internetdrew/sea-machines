@@ -1,3 +1,5 @@
+import { ActivityDrawer } from '@/components/vessel/ActivityDrawer';
+import type { ActivityPayload } from '@/components/vessel/ActivityDrawer';
 import { NavigationTooltipProvider } from '@/components/NavigationTooltip';
 import type { Map as MapInstance } from 'maplibre-gl';
 import { Map, MapControls } from '@/components/ui/map';
@@ -24,6 +26,12 @@ function App() {
   const [missionDrawer] = useState(() =>
     Drawer.createHandle<MissionDrawerPayload>(),
   );
+  const [activityDrawer] = useState(() => Drawer.createHandle<ActivityPayload>());
+  const [activityVesselId, setActivityVesselId] = useState<string | null>(null);
+  const activityOpened = useCallback(() => {
+    setFollow(false);
+    if (window.matchMedia('(max-width: 639px)').matches) missionDrawer.close();
+  }, [missionDrawer]);
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
   const [drawerSelection, setDrawerSelection] = useState<{ id: string; planning: boolean; locked: boolean } | null>(null);
   const selectVessel = useCallback((id: string, open: boolean) => {
@@ -41,7 +49,7 @@ function App() {
     setDrawerSelection(id ? { id, planning, locked } : null);
     if (!id) setSelectedVesselId(null);
   }, []);
-  const activeVesselId = drawerSelection?.id ?? selectedVesselId;
+  const activeVesselId = activityVesselId ?? drawerSelection?.id ?? selectedVesselId;
   const [showRangeRings, setShowRangeRings] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
   const [follow, setFollow] = useState(false);
@@ -79,6 +87,7 @@ function App() {
           selectionDisabled={drawerSelection?.locked ?? false}
           onSelectionChange={selectVessel}
           missionDrawer={missionDrawer}
+          activityDrawer={activityDrawer}
           follow={index === 0 && follow}
           showRangeRings={showRangeRings && !drawerSelection?.planning}
           onPan={stopFollowing}
@@ -95,6 +104,7 @@ function App() {
           />
         </div>
         </NavigationTooltipProvider>
+        <ActivityDrawer handle={activityDrawer} vessels={vessels} onSelection={setActivityVesselId} onOpen={activityOpened} />
         <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} onSelectionChange={drawerChanged} />
       </Map>
     </main>

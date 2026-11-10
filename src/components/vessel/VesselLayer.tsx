@@ -1,3 +1,4 @@
+import type { ActivityPayload } from './ActivityDrawer';
 'use client';
 
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
@@ -26,6 +27,7 @@ type Props = VesselDisplayOptions & {
   selectionDisabled: boolean;
   onSelectionChange: (id: string, open: boolean) => void;
   missionDrawer: Drawer.Handle<MissionDrawerPayload>;
+  activityDrawer: Drawer.Handle<ActivityPayload>;
   onPan: () => void;
 };
 
@@ -37,6 +39,7 @@ export function VesselLayer({
   selectionDisabled,
   onSelectionChange,
   missionDrawer,
+  activityDrawer,
   follow,
   showRangeRings,
   onPan,
@@ -208,8 +211,8 @@ export function VesselLayer({
                   </Popover.Close>
                 }
               />
-              {!missionDrawerOpen && <footer className='mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
-                <Drawer.Trigger
+              {<footer className='mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
+                {!missionDrawerOpen && <Drawer.Trigger
                   handle={missionDrawer}
                   payload={{
                     vesselId: vessel.id,
@@ -229,7 +232,8 @@ export function VesselLayer({
                   {isMissionInProgress(snapshot)
                     ? 'View mission'
                     : 'Plan a mission'}
-                </Drawer.Trigger>
+                </Drawer.Trigger>}
+                <Drawer.Trigger handle={activityDrawer} payload={{ vesselId: vessel.id, returnFocus: markerButton }} onClick={() => { openingDrawer.current = true; setPopoverOpen(false); }} className='mission-cta flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-[#2b3033] px-3 py-2 text-xs font-medium text-neutral-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'>View activity</Drawer.Trigger>
               </footer>}
             </Popover.Popup>
           </Popover.Positioner>
