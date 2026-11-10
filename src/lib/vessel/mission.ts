@@ -30,6 +30,15 @@ export function createMissionDraft(speed: number): MissionDraft {
   };
 }
 
+/** Defaults for a new plan, independent of the vessel's current commanded speed. */
+export function createVesselMissionDraft(maxSpeed: number): MissionDraft {
+  const speed = Math.max(1, Math.round(maxSpeed * 0.5));
+  return {
+    ...createMissionDraft(speed),
+    turnSpeed: Math.min(speed, Math.max(1, Math.round(maxSpeed * 0.45))),
+  };
+}
+
 export function distanceNm(from: Coordinate, to: Coordinate) {
   const rad = Math.PI / 180;
   const a = Math.sin((to[1] - from[1]) * rad / 2) ** 2 +

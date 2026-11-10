@@ -1,3 +1,4 @@
+import { MissionSpeedControl } from './MissionSpeedControl';
 import { NumberPopIn } from '@/components/NumberPopIn';
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { getVesselIdentity } from '@/lib/vessel/vessel';
@@ -693,27 +694,14 @@ export function MissionPlanner({
               </section>
               {step === 'speeds' && (
                 <section
-                  className='mt-5 rounded-xl bg-muted p-4'
+                  className='mt-3'
                   aria-label='Mission speeds'
                 >
-                  <p className='mt-1 mb-4 text-xs leading-relaxed text-muted-foreground'>
-                    {hasTurns
-                      ? 'Choose the speed for straight sections and turns.'
-                      : 'Choose the travel speed for this leg.'}{' '}
-                    Vessel maximum: {vessel.simulation.maxSpeed} kn.
-                  </p>
-                  <div
-                    className={
-                      hasTurns ? 'grid grid-cols-2 gap-3' : 'grid gap-3'
-                    }
-                  >
-                    <MissionNumberField
+                  <div>
+                    <MissionSpeedControl
                       label='Straight-line speed'
-                      unit='kn'
                       value={draft.speed}
-                      min={0.5}
                       max={vessel.simulation.maxSpeed}
-                      step={0.5}
                       onValueChange={speed =>
                         update({
                           speed,
@@ -730,13 +718,10 @@ export function MissionPlanner({
                       errorId={speedError ? speedErrorId : undefined}
                     />
                     {hasTurns && (
-                      <MissionNumberField
+                      <MissionSpeedControl
                         label='Turn speed'
-                        unit='kn'
                         value={draft.turnSpeed}
-                        min={0.5}
                         max={vessel.simulation.maxSpeed}
-                        step={0.5}
                         onValueChange={turnSpeed => update({ turnSpeed })}
                         errorId={speedError ? speedErrorId : undefined}
                       />

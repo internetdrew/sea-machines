@@ -16,7 +16,7 @@ import { MissionPlanner } from './MissionPlanner';
 import type { MissionPlanningStep } from './MissionPlanner';
 import { fitMissionRoute } from '@/lib/mission-camera';
 import {
-  createMissionDraft,
+  createVesselMissionDraft,
   missionCoordinates,
   buildGridPlan,
 } from '@/lib/vessel/mission';
@@ -174,8 +174,8 @@ export function MissionDrawer({
                       vessel={vessel}
                       draft={
                         drafts[vessel.id] ??
-                        createMissionDraft(
-                          vessel.simulation.getSnapshot().cruiseSpeed,
+                        createVesselMissionDraft(
+                          vessel.simulation.maxSpeed,
                         )
                       }
                       onDraftChange={draft =>
