@@ -463,8 +463,8 @@
 }
 
 /* Continuous mission-speed controls: muted travel, a single small throttle. */
-.mission-speed-control { padding: 17px 0 9px; }
-.mission-speed-control + .mission-speed-control { margin-top: 10px; }
+.mission-speed-control { padding: 14px 0 7px; }
+.mission-speed-control + .mission-speed-control { margin-top: 7px; }
 .mission-speed-value { appearance: textfield; }
 .mission-speed-value::-webkit-inner-spin-button,
 .mission-speed-value::-webkit-outer-spin-button { appearance: none; margin: 0; }

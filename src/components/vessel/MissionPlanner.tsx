@@ -16,7 +16,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { Button } from '@base-ui/react/button';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Drawer } from '@base-ui/react/drawer';
-import { ArrowUpLeft, ChevronRight, Grid2X2, Route, X } from 'lucide-react';
+import { ArrowUpLeft, ChevronRight, Grid2X2, Map as MapIcon, Route, X } from 'lucide-react';
 import type { MapMouseEvent } from 'maplibre-gl';
 import {
   MapGeoJSON,
@@ -42,7 +42,7 @@ import { GridMissionRoute } from './GridMissionRoute';
 import { MissionPlacementCursor } from './MissionPlacementCursor';
 import { WaypointMissionRoute } from './WaypointMissionRoute';
 
-export type MissionPlanningStep = 'type' | 'route' | 'speeds' | 'review';
+export type MissionPlanningStep = 'type' | 'route' | 'speeds';
 const ROUTE_PLANNING_ZOOM = 11;
 
 const secondaryButton =
@@ -109,8 +109,6 @@ export function MissionPlanner({
   const closeButton = useRef<HTMLButtonElement | null>(null);
   const keepPlanningButton = useRef<HTMLButtonElement | null>(null);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
-  const [returnToReview, setReturnToReview] = useState(false);
-  const reviewing = step === 'review';
   const placingWaypoints = step === 'route' && draft.type === 'waypoint';
   const placingGrid = step === 'route' && draft.type === 'grid' && editing;
   const placingOnMap = placingWaypoints || placingGrid;
@@ -387,10 +385,8 @@ export function MissionPlanner({
           {getVesselIdentity(vessel)}
         </Drawer.Description>
         <Drawer.Title className='pr-8 text-lg font-medium'>
-          {reviewing
-            ? 'Review mission'
-            : step === 'speeds'
-              ? 'Set mission speeds'
+          {step === 'speeds'
+              ? 'Prepare mission'
               : placingWaypoints
                 ? 'Plan a waypoint route'
                 : 'Plan a mission'}
@@ -456,7 +452,8 @@ export function MissionPlanner({
                   ))}
                 </div>
               ) : (
-                <div className='flex items-center justify-between gap-3'>
+                <div className='flex items-start justify-between gap-3'>
+                  <div className={step === 'speeds' ? '' : 'flex w-full items-center justify-between gap-3'}>
                   <h3 className='text-sm font-medium'>
                     {draft.type === 'grid'
                       ? 'Grid mission'
@@ -465,11 +462,18 @@ export function MissionPlanner({
                   {(draft.type === 'waypoint'
                     ? draft.waypoints.length > 0
                     : gridPlan.passCount > 0) && (
-                    <span className='text-xs text-muted-foreground'>
+                    <span className={`text-xs text-muted-foreground ${step === 'speeds' ? 'mt-1 block' : ''}`}>
                       {draft.type === 'grid'
                         ? `${gridPlan.passCount} passes`
                         : `${draft.waypoints.length} waypoint${draft.waypoints.length === 1 ? '' : 's'}`}
                     </span>
+                  )}
+                  </div>
+                  {step === 'speeds' && (
+                    <Button onClick={frameRoute} className='-mt-2 inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded px-1 text-xs text-[#bfcecf] hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'>
+                      <MapIcon aria-hidden='true' className='size-3.5' />
+                      Show route
+                    </Button>
                   )}
                 </div>
               )}
@@ -636,29 +640,16 @@ export function MissionPlanner({
                   <div aria-live='polite' aria-atomic='true'>
                     <dt className='text-muted-foreground'>Est. travel time</dt>
                     <dd className='mt-1 text-sm font-medium'>
-                      {step === 'speeds' ? duration : <NumberPopIn value={duration} />}
+                      {step === 'speeds' ? (
+                        duration
+                      ) : (
+                        <NumberPopIn value={duration} />
+                      )}
                     </dd>
                   </div>
-                  {reviewing && (
-                    <>
-                      <div>
-                        <dt className='text-muted-foreground'>
-                          Straight-line speed
-                        </dt>
-                        <dd className='mt-1 font-medium'>{draft.speed} kn</dd>
-                      </div>
-                      {hasTurns && (
-                        <div>
-                          <dt className='text-muted-foreground'>Turn speed</dt>
-                          <dd className='mt-1 font-medium'>
-                            {draft.turnSpeed} kn
-                          </dd>
-                        </div>
-                      )}
-                    </>
-                  )}
+
                 </dl>
-                <p className='mt-3 text-[10px] leading-relaxed text-muted-foreground'>
+                <p className={`mt-3 text-[10px] leading-relaxed text-muted-foreground ${step === 'speeds' ? 'border-b border-white/10 pb-4' : ''}`}>
                   Time estimate uses straight-line speed; acceleration and turns
                   add time.
                 </p>
@@ -693,10 +684,7 @@ export function MissionPlanner({
                 )}
               </section>
               {step === 'speeds' && (
-                <section
-                  className='mt-3'
-                  aria-label='Mission speeds'
-                >
+                <section className='mt-1' aria-label='Mission speeds'>
                   <div>
                     <MissionSpeedControl
                       label='Straight-line speed'
@@ -738,37 +726,7 @@ export function MissionPlanner({
                   )}
                 </section>
               )}
-              {reviewing && (
-                <div className='mt-5 space-y-3'>
-                  <div className='flex flex-wrap gap-2'>
-                    <Button
-                      className={secondaryButton}
-                      onClick={() => {
-                        setReturnToReview(true);
-                        editRoute();
-                      }}
-                    >
-                      Edit route
-                    </Button>
-                    <Button
-                      className={secondaryButton}
-                      onClick={() => {
-                        setReturnToReview(true);
-                        setStep('speeds');
-                      }}
-                    >
-                      Edit speeds
-                    </Button>
-                    <Button className={secondaryButton} onClick={frameRoute}>
-                      Show route
-                    </Button>
-                  </div>
-                  <p className='text-xs leading-relaxed text-muted-foreground'>
-                    Check the full route on the map. Deploying starts this
-                    vessel moving immediately.
-                  </p>
-                </div>
-              )}
+
             </>
           )}
         </motion.div>
@@ -776,6 +734,11 @@ export function MissionPlanner({
 
       {step !== 'type' && (
         <footer className='shrink-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+          {step === 'speeds' && (
+            <p className='mb-3 px-1 text-[11px] leading-relaxed text-[#bbc5ca]'>
+              {vessel.id} will begin moving as soon as you deploy the mission.
+            </p>
+          )}
           {deploymentError && (
             <p role='alert' className='mb-2 text-xs text-destructive'>
               {deploymentError}
@@ -785,17 +748,14 @@ export function MissionPlanner({
             type='button'
             className='mb-2 flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md border border-transparent bg-[#2b3033] px-3 py-2 text-xs font-medium text-[#bcbcb7] transition-[background-color,color] duration-150 ease-[ease] motion-reduce:transition-none hover:bg-white/10 hover:text-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100'
             onClick={() => {
-              setReturnToReview(false);
               if (step === 'speeds') editRoute();
               else {
                 setEditing(false);
-                setStep(reviewing ? 'speeds' : 'type');
+                setStep('type');
               }
             }}
           >
-            {reviewing
-              ? 'Back to speeds'
-              : step === 'speeds'
+            {step === 'speeds'
                 ? 'Back to route'
                 : 'Back to mission type'}
           </Button>
@@ -811,8 +771,7 @@ export function MissionPlanner({
             onClick={() => {
               setEditing(false);
               if (step === 'route') {
-                setStep(returnToReview ? 'review' : 'speeds');
-                setReturnToReview(false);
+                setStep('speeds');
                 if (!hasTurns && draft.speed !== null && draft.speed > 0)
                   update({
                     turnSpeed: Math.min(
@@ -832,27 +791,15 @@ export function MissionPlanner({
                   };
                   frameRoute();
                 }
-              } else if (reviewing) {
+              } else {
                 if (!onDeploy(draft))
                   setDeploymentError(
                     'Unable to deploy. Check the route and speeds, and make sure this vessel has no mission in progress.',
                   );
-              } else {
-                setStep('review');
-                setReturnToReview(false);
-                frameRoute();
               }
             }}
           >
-            {step === 'route'
-              ? returnToReview
-                ? 'Return to review'
-                : 'Set mission speeds'
-              : reviewing
-                ? 'Deploy mission'
-                : returnToReview
-                  ? 'Return to review'
-                  : 'Review mission'}
+            {step === 'route' ? 'Prepare mission' : 'Deploy mission'}
           </Button>
         </footer>
       )}

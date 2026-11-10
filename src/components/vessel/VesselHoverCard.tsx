@@ -182,25 +182,25 @@ export function VesselHoverCard({
         </button>
       </div>
       {active && (
-        <>
-          <div className='mt-2 flex items-center justify-between gap-4 text-xs'>
-            <span className='text-neutral-400'>Mission progress</span>
-            <span className='tabular-nums'>{progress}%</span>
-          </div>
-          <p className='mt-1 text-xs text-neutral-400'>
-            Next waypoint{' '}
-            <span className='tabular-nums'>
-              {snapshot.nextWaypoint ? (
-                <span className='text-neutral-100'>
-                  {snapshot.remaining.toFixed(2)} nm
-                  {minutes !== null ? ` · ~${minutes} min` : ''}
-                </span>
-              ) : (
-                '—'
-              )}
-            </span>
-          </p>
-        </>
+        <section aria-label='Mission' className='mt-5 text-xs'>
+          <dl className='space-y-1'>
+            <div className='flex items-baseline justify-between gap-3'>
+              <dt className='text-neutral-400'>Mission progress</dt>
+              <dd className='text-right tabular-nums'>{progress}%</dd>
+            </div>
+            <div className='flex items-baseline justify-between gap-3'>
+              <dt className='shrink-0 text-neutral-400'>Next waypoint</dt>
+              <dd className='text-right text-neutral-100 tabular-nums'>
+                {snapshot.nextWaypoint ? (
+                  <>
+                    {snapshot.remaining.toFixed(2)} nm
+                    {minutes !== null ? ` · ~${minutes} min` : ''}
+                  </>
+                ) : '—'}
+              </dd>
+            </div>
+          </dl>
+        </section>
       )}
       <section aria-label='Fuel' className='mt-5'>
         <h3 className='text-xs font-medium text-neutral-400'>Fuel</h3>
