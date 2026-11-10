@@ -102,7 +102,6 @@ function ActivityBody({ vessels, initialVesselId, open, onSelection }: { vessels
     <div ref={scroller} className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3' onScroll={e => { if (!held && e.currentTarget.scrollTop > 20) setHeld(live); }}>
       {visible.length ? visible.map(event => <ActivityEntry key={`${event.vesselId}:${event.id}`} event={event} showVessel={true} />) : <p className='px-2 py-8 text-xs leading-relaxed text-muted-foreground'>No activity {filter === 'all' ? 'yet' : `for ${filter} yet`}. Deployed missions and accepted changes will appear here.</p>}
     </div>
-    <footer className='shrink-0 border-t border-white/5 px-5 py-3 text-[10px] text-neutral-400'>{visible.length} {visible.length === 1 ? 'entry' : 'entries'} · session history · up to 500 per vessel</footer>
     <span className='sr-only' role='status' aria-live='polite'>{pending > 0 ? `${pending} new activity events available.` : ''}</span>
   </>;
 }
