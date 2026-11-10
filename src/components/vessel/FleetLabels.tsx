@@ -5,7 +5,7 @@ import type { LabelRect, LabelSide } from '@/lib/vessel/label-placement';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 // Separate viewport overlay: vessel headings never rotate the identity text.
-export function FleetLabels({ vessels, planningVesselId }: { vessels: readonly Vessel[]; planningVesselId: string | null }) {
+export function FleetLabels({ vessels, planningVesselId, lockedVesselId }: { vessels: readonly Vessel[]; planningVesselId: string | null; lockedVesselId: string | null }) {
   const { map, isLoaded } = useMap();
   const root = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -21,6 +21,7 @@ export function FleetLabels({ vessels, planningVesselId }: { vessels: readonly V
       fleetId.textContent = vessel.id;
       const series = document.createElement('span');
       series.className = 'vessel-identity-series';
+      label.dataset.unavailable = String(lockedVesselId !== null && lockedVesselId !== vessel.id);
       series.textContent = vessel.series.label;
       content.append(fleetId, series);
       label.append(content);
@@ -98,6 +99,7 @@ export function FleetLabels({ vessels, planningVesselId }: { vessels: readonly V
       const content = label.querySelector<HTMLElement>('.vessel-identity-content');
       const series = label.querySelector<HTMLElement>('.vessel-identity-series');
       if (!vessel || !content || !series) return [];
+      label.dataset.unavailable = String(lockedVesselId !== null && lockedVesselId !== vessel.id);
       series.textContent = vessel.series.label + (planningVesselId === vessel.id ? ' · Planning' : '');
       return [{ label, content }];
     });
@@ -106,6 +108,6 @@ export function FleetLabels({ vessels, planningVesselId }: { vessels: readonly V
       label.style.width = `${width}px`;
       label.style.height = `${height}px`;
     });
-  }, [map, isLoaded, vessels, planningVesselId]);
+  }, [map, isLoaded, vessels, planningVesselId, lockedVesselId]);
   return <div ref={root} className='vessel-identities' aria-hidden='true' />;
 }

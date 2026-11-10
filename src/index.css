@@ -346,10 +346,10 @@
 
 /* Charcoal navigation surfaces, matching the reference card. */
 .maplibregl-ctrl-attrib {
-  --background: #262626;
+  --background: #1d2123;
   --foreground: #f5f5f5;
   --muted-foreground: #b5b5b5;
-  --border: #ffffff1f;
+  --border: #ffffff1a;
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
   filter: none;
@@ -451,4 +451,13 @@
   .mission-discard-dialog {
     transition: none;
   }
+}
+
+/* Unavailable fleet identities remain readable during mission planning. */
+.vessel-identity[data-unavailable='true'] {
+  opacity: 0.7;
+}
+
+.vessel-identity[data-unavailable='true'] .vessel-identity-series {
+  color: #c4ced4;
 }

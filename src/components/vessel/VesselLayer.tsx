@@ -21,6 +21,8 @@ import type { Vessel } from '@/lib/vessel/vessel';
 type Props = VesselDisplayOptions & {
   vessel: Vessel;
   selected: boolean;
+  planning: boolean;
+  selectionDisabled: boolean;
   onSelectionChange: (id: string, open: boolean) => void;
   missionDrawer: Drawer.Handle<MissionDrawerPayload>;
   onPan: () => void;
@@ -29,6 +31,8 @@ type Props = VesselDisplayOptions & {
 export function VesselLayer({
   vessel,
   selected,
+  planning,
+  selectionDisabled,
   onSelectionChange,
   missionDrawer,
   follow,
@@ -86,8 +90,9 @@ export function VesselLayer({
 
   return (
     <Popover.Root
-      open={popoverOpen}
+      open={popoverOpen && !selectionDisabled}
       onOpenChange={open => {
+        if (open && selectionDisabled) return;
         if (open) {
           openingDrawer.current = false;
         }
@@ -138,6 +143,8 @@ export function VesselLayer({
         <MarkerContent>
           <Popover.Trigger
             ref={markerButton}
+            disabled={selectionDisabled}
+            aria-describedby={selectionDisabled ? 'vessel-selection-status' : undefined}
             aria-label={`Show ${getVesselIdentity(vessel)} actions`}
             onPointerEnter={event => {
               if (event.pointerType === 'mouse' || event.pointerType === 'pen')
@@ -150,11 +157,12 @@ export function VesselLayer({
               setMarkerFocused(focused);
             }}
             onBlur={() => setMarkerFocused(false)}
-            className='block cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring'
+            className='block cursor-pointer disabled:cursor-default rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring'
           >
             <svg
               data-vessel-hull={vessel.id}
               data-selected={selected}
+              data-unavailable={selectionDisabled && !selected}
               viewBox='0 0 100 220'
               aria-hidden='true'
               dangerouslySetInnerHTML={{
@@ -163,7 +171,7 @@ export function VesselLayer({
                   : boat
                 ).replace(/<svg[^>]*>|<\/svg>|<title>[\s\S]*?<\/title>/g, ''),
               }}
-              className='h-24 w-auto drop-shadow-lg data-[selected=false]:hover:[&>path]:stroke-neutral-100/80 data-[selected=true]:[&>path]:stroke-[#f5e835]'
+              className='h-24 w-auto drop-shadow-lg data-[unavailable=true]:opacity-[0.38] data-[unavailable=false]:data-[selected=false]:hover:[&>path]:stroke-neutral-100/80 data-[selected=true]:[&>path]:stroke-[#f5e835]'
             />
           </Popover.Trigger>
         </MarkerContent>
@@ -178,7 +186,7 @@ export function VesselLayer({
               finalFocus={() =>
                 openingDrawer.current ? false : (markerButton.current ?? false)
               }
-              className='relative w-72 max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto origin-(--transform-origin) rounded-lg border border-white/15 bg-[#262626] p-4.5 text-sm text-neutral-100 shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
+              className='relative w-72 max-w-[calc(100vw-24px)] max-h-[calc(100dvh-24px)] overflow-y-auto origin-(--transform-origin) rounded-lg border border-white/10 bg-[#1d2123] p-4.5 text-sm text-neutral-100 shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'
             >
               <Popover.Title className='sr-only'>
                 {getVesselIdentity(vessel)}
@@ -214,7 +222,7 @@ export function VesselLayer({
                     openingDrawer.current = true;
                     setPopoverOpen(false);
                   }}
-                  className='flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+                  className={`flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${planning ? 'bg-[#2b3033] text-neutral-200 hover:bg-[#353b3f]' : 'bg-neutral-100 text-neutral-950 hover:bg-white'}`}
                 >
                   {isMissionInProgress(snapshot)
                     ? 'View mission'

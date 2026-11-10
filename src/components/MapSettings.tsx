@@ -67,7 +67,7 @@ export function MapSettings({
           collisionPadding={12}
           className='z-50'
         >
-          <Popover.Popup className='[--popover:#262626] [--popover-foreground:#f5f5f5] [--border:#ffffff1f] [--muted:#333333] [--input:#525252] [--primary:#f5f5f5] [--background:#262626] [--ring:#d4d4d4] relative w-72 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
+          <Popover.Popup className='[--popover:#1d2123] [--popover-foreground:#f5f5f5] [--border:#ffffff1a] [--muted:#2b3033] [--input:#525252] [--primary:#f5f5f5] [--background:#1d2123] [--ring:#d4d4d4] relative w-72 max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-lg border bg-popover p-4 text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none transition-[scale,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none'>
             <Popover.Title className='pr-6 text-sm font-medium'>
               Map settings
             </Popover.Title>

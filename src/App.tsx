@@ -25,12 +25,20 @@ function App() {
     Drawer.createHandle<MissionDrawerPayload>(),
   );
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
-  const [drawerSelection, setDrawerSelection] = useState<{ id: string; planning: boolean } | null>(null);
+  const [drawerSelection, setDrawerSelection] = useState<{ id: string; planning: boolean; locked: boolean } | null>(null);
   const selectVessel = useCallback((id: string, open: boolean) => {
     setSelectedVesselId(current => open ? id : current === id ? null : current);
   }, []);
-  const drawerChanged = useCallback((id: string | null, planning: boolean) => {
-    setDrawerSelection(id ? { id, planning } : null);
+  const selectionWasLocked = useRef(false);
+  const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
+  const drawerChanged = useCallback((id: string | null, planning: boolean, locked: boolean) => {
+    if (locked !== selectionWasLocked.current) {
+      selectionWasLocked.current = locked;
+      setSelectionAnnouncement(locked
+        ? 'Vessel selection is locked until you cancel or deploy this mission.'
+        : 'Vessel selection is available again.');
+    }
+    setDrawerSelection(id ? { id, planning, locked } : null);
     if (!id) setSelectedVesselId(null);
   }, []);
   const activeVesselId = drawerSelection?.id ?? selectedVesselId;
@@ -52,6 +60,7 @@ function App() {
   }, [vessels, stopFollowing]);
   return (
     <main className='relative h-dvh w-full [--map-edge-inset:1rem]' aria-label='Interactive map'>
+      <p id='vessel-selection-status' role='status' aria-live='polite' aria-atomic='true' className='sr-only'>{selectionAnnouncement}</p>
       <Map
         ref={mapRef}
         center={INITIAL_CENTER}
@@ -65,15 +74,17 @@ function App() {
           key={vessel.id}
           vessel={vessel}
           selected={activeVesselId === vessel.id}
+          planning={drawerSelection?.planning ?? false}
+          selectionDisabled={drawerSelection?.locked ?? false}
           onSelectionChange={selectVessel}
           missionDrawer={missionDrawer}
           follow={index === 0 && follow}
           showRangeRings={showRangeRings && !drawerSelection?.planning}
           onPan={stopFollowing}
         />)}
-        <FleetLabels vessels={vessels} planningVesselId={drawerSelection?.planning ? drawerSelection.id : null} />
+        <FleetLabels vessels={vessels} lockedVesselId={drawerSelection?.locked ? drawerSelection.id : null} planningVesselId={drawerSelection?.planning ? drawerSelection.id : null} />
         <NavigationTooltipProvider delay={350}>
-        <div className='map-toolbar text-neutral-100 [--background:#262626] [--foreground:#f5f5f5] [--accent:#333333] [--border:#ffffff1f] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
+        <div className='map-toolbar text-neutral-100 [--background:#1d2123] [--foreground:#f5f5f5] [--accent:#2b3033] [--border:#ffffff1a] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen onFitFleet={fitFleet} />
           <MapSettings
             showSeamarks={showSeamarks}
