@@ -636,7 +636,7 @@ export function MissionPlanner({
                   <div aria-live='polite' aria-atomic='true'>
                     <dt className='text-muted-foreground'>Est. travel time</dt>
                     <dd className='mt-1 text-sm font-medium'>
-                      <NumberPopIn value={duration} />
+                      {step === 'speeds' ? duration : <NumberPopIn value={duration} />}
                     </dd>
                   </div>
                   {reviewing && (
