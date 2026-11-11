@@ -1,3 +1,6 @@
+import { FleetInteractionProvider, FleetSelectionStatus } from '@/components/vessel/FleetInteractions';
+import { ActivityDrawer } from '@/components/vessel/ActivityDrawer';
+import type { ActivityPayload } from '@/components/vessel/ActivityDrawer';
 import { NavigationTooltipProvider } from '@/components/NavigationTooltip';
 import type { Map as MapInstance } from 'maplibre-gl';
 import { Map, MapControls } from '@/components/ui/map';
@@ -12,7 +15,7 @@ import { FleetLabels } from '@/components/vessel/FleetLabels';
 import { VesselLayer } from '@/components/vessel/VesselLayer';
 import { useFleet } from '@/lib/vessel/use-fleet';
 import { getFleetBounds } from '@/lib/vessel/fleet-bounds';
-import { INITIAL_CENTER } from '@/lib/vessel/navigation';
+import { DEFAULT_MAP_ZOOM, INITIAL_CENTER } from '@/lib/vessel/navigation';
 
 function App() {
   const mapRef = useRef<MapInstance | null>(null);
@@ -24,9 +27,14 @@ function App() {
   const [missionDrawer] = useState(() =>
     Drawer.createHandle<MissionDrawerPayload>(),
   );
+  const [activityDrawer] = useState(() => Drawer.createHandle<ActivityPayload>());
+  const [follow, setFollow] = useState(false);
+  const activityOpened = useCallback(() => {
+    setFollow(false);
+    if (window.matchMedia('(max-width: 639px)').matches) missionDrawer.close();
+  }, [missionDrawer]);
   const [showRangeRings, setShowRangeRings] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
-  const [follow, setFollow] = useState(false);
   const stopFollowing = useCallback(() => setFollow(false), []);
   const fitFleet = useCallback(() => {
     const bounds = getFleetBounds(vessels.map(vessel => vessel.simulation.getFrame().position));
@@ -34,20 +42,22 @@ function App() {
     stopFollowing();
     mapRef.current.fitBounds(bounds, {
       padding: 80,
-      maxZoom: 12.5,
+      maxZoom: DEFAULT_MAP_ZOOM,
       bearing: 0,
       pitch: 0,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
     });
   }, [vessels, stopFollowing]);
   return (
+    <FleetInteractionProvider>
     <main className='relative h-dvh w-full [--map-edge-inset:1rem]' aria-label='Interactive map'>
+      <FleetSelectionStatus />
       <Map
         ref={mapRef}
         center={INITIAL_CENTER}
-        zoom={12.5}
+        zoom={DEFAULT_MAP_ZOOM}
         bounds={initialFleetBounds}
-        fitBoundsOptions={{ padding: 80, maxZoom: 12.5 }}
+        fitBoundsOptions={{ padding: 80, maxZoom: DEFAULT_MAP_ZOOM }}
         theme='dark'
       >
         {showSeamarks && <SeamarkLayer />}
@@ -55,13 +65,14 @@ function App() {
           key={vessel.id}
           vessel={vessel}
           missionDrawer={missionDrawer}
+          activityDrawer={activityDrawer}
           follow={index === 0 && follow}
           showRangeRings={showRangeRings}
           onPan={stopFollowing}
         />)}
-        <FleetLabels vessels={vessels} />
+        <FleetLabels vessels={vessels} onFocusVessel={stopFollowing} />
         <NavigationTooltipProvider delay={350}>
-        <div className='map-toolbar text-neutral-100 [--background:#262626] [--foreground:#f5f5f5] [--accent:#333333] [--border:#ffffff1f] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
+        <div className='map-toolbar text-neutral-100 [--background:#171717] [--foreground:#f5f5f5] [--accent:#262626] [--border:#262626] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen onFitFleet={fitFleet} />
           <MapSettings
             showSeamarks={showSeamarks}
@@ -71,9 +82,11 @@ function App() {
           />
         </div>
         </NavigationTooltipProvider>
+        <ActivityDrawer handle={activityDrawer} vessels={vessels} onOpen={activityOpened} />
         <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} />
       </Map>
     </main>
+    </FleetInteractionProvider>
   );
 }
 

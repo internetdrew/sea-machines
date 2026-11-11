@@ -1,6 +1,7 @@
+import { missionProgressPercent } from '../src/lib/vessel/mission.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMissionDraft, createDeployment, addMissionWaypoint, missionDistance, distanceNm, canReviewMission, buildGridPlan, missionCoordinates, missionSpeedError, routeDirection } from '../src/lib/vessel/mission.ts';
+import { createMissionDraft, createDeployment, addMissionWaypoint, missionDistance, distanceNm, canReviewMission, buildGridPlan, missionCoordinates, missionSpeedError, missionHasTurns, routeDirection } from '../src/lib/vessel/mission.ts';
 
 test('distances use nautical miles and the short path across the antimeridian', () => {
   const degree = distanceNm([0, 0], [1, 0]);
@@ -151,4 +152,25 @@ test('turn-speed validation applies to both mission types and switching retains 
     }
     assert.equal(canReviewMission({ ...combined, type, turnSpeed: 12 }), true);
   }
+});
+
+
+test('turn controls follow the route geometry, including duplicate and dateline points', () => {
+  const draft = { ...createMissionDraft(12), origin: [0, 0], waypoints: [[0, 1]] };
+  assert.equal(missionHasTurns(draft), false);
+  assert.equal(missionHasTurns({ ...draft, waypoints: [[0, 1], [0, 2]] }), false);
+  assert.equal(missionHasTurns({ ...draft, waypoints: [[0, 1], [1, 1]] }), true);
+  assert.equal(missionHasTurns({ ...draft, waypoints: [[0, 0], [0, 1]] }), false);
+  assert.equal(missionHasTurns({ ...draft, origin: [179, 0], waypoints: [[-180, 0], [-179, 0]] }), false);
+  const grid = { ...draft, type: 'grid', grid: { origin: [0, -0.01], center: [0, 0], width: 200, height: 200, spacing: 100, heading: 0 } };
+  assert.equal(missionHasTurns(grid), true);
+});
+
+test('mission progress reserves 100 percent for confirmed arrival', () => {
+  assert.equal(missionProgressPercent(2.43, 2.44, false), 99);
+  assert.equal(missionProgressPercent(2.44, 2.44, false), 99);
+  assert.equal(missionProgressPercent(2.44, 2.44, true), 100);
+  assert.equal(missionProgressPercent(0, 0, false), 0);
+  assert.equal(missionProgressPercent(0, 0, true), 100);
+  assert.equal(missionProgressPercent(0.279, 1, false), 27);
 });

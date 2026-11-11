@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { FLEET_DEFINITIONS } from '../src/lib/vessel/fleet-definitions.ts';
 import { getVesselIdentity } from '../src/lib/vessel/vessel.ts';
 import { createVesselSimulation } from '../src/lib/vessel/simulation.ts';
-import { createMissionDraft } from '../src/lib/vessel/mission.ts';
+import { createMissionDraft, createVesselMissionDraft } from '../src/lib/vessel/mission.ts';
 
 test('fleet definitions keep individual identity separate from series', () => {
   assert.equal(new Set(FLEET_DEFINITIONS.map(vessel => vessel.id)).size, FLEET_DEFINITIONS.length);
@@ -28,4 +28,12 @@ test('each series provides its own planning speeds and descriptive range', () =>
     assert.equal(simulation.getFrame().heading, definition.initialHeading);
   }
   assert.notEqual(stormrunner.initialFuelTanks, selkie.initialFuelTanks);
+});
+
+test('new vessel plans default to whole-knot percentages of maximum speed', () => {
+  for (const [maximum, straight, turn] of [[40, 20, 18], [30, 15, 14], [35, 18, 16]]) {
+    const draft = createVesselMissionDraft(maximum);
+    assert.equal(draft.speed, straight);
+    assert.equal(draft.turnSpeed, turn);
+  }
 });

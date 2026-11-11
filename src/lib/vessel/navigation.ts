@@ -1,4 +1,5 @@
 export type Coordinate = [number, number];
+export const DEFAULT_MAP_ZOOM = 12.5;
 // Demo start in Massachusetts Bay, outside Boston Harbor.
 export const INITIAL_POSITION = { longitude: -70.85, latitude: 42.31 };
 // Heading in degrees clockwise from north: 0=N, 90=E, 180=S, 270=W.
@@ -52,25 +53,3 @@ export const INITIAL_CENTER: [number, number] = [
   INITIAL_POSITION.latitude,
 ];
 export const RANGE_DISTANCES = [0.5, 1, 2];
-
-export function headingToWaypoint(position: [number, number]) {
-  if (
-    Math.abs(position[0] - WAYPOINT[0]) + Math.abs(position[1] - WAYPOINT[1]) <
-    1e-10
-  )
-    return INITIAL_HEADING;
-  const rad = Math.PI / 180;
-  const delta = (WAYPOINT[0] - position[0]) * rad;
-  const latitude = position[1] * rad;
-  const targetLatitude = WAYPOINT[1] * rad;
-  return (
-    (Math.atan2(
-      Math.sin(delta) * Math.cos(targetLatitude),
-      Math.cos(latitude) * Math.sin(targetLatitude) -
-        Math.sin(latitude) * Math.cos(targetLatitude) * Math.cos(delta),
-    ) /
-      rad +
-      360) %
-    360
-  );
-}

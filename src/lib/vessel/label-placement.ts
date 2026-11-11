@@ -69,3 +69,19 @@ export function placeVesselLabel(
   }
   return base;
 }
+
+/** Convert viewport CSS bounds to the overlay's local layout coordinates. */
+export function relativeLabelRect(
+  bounds: LabelRect,
+  overlay: LabelRect,
+  layout: { width: number; height: number },
+): LabelRect {
+  const scaleX = layout.width / overlay.width;
+  const scaleY = layout.height / overlay.height;
+  return {
+    x: (bounds.x - overlay.x) * scaleX,
+    y: (bounds.y - overlay.y) * scaleY,
+    width: bounds.width * scaleX,
+    height: bounds.height * scaleY,
+  };
+}

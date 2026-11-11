@@ -30,6 +30,15 @@ export function createMissionDraft(speed: number): MissionDraft {
   };
 }
 
+/** Defaults for a new plan, independent of the vessel's current commanded speed. */
+export function createVesselMissionDraft(maxSpeed: number): MissionDraft {
+  const speed = Math.max(1, Math.round(maxSpeed * 0.5));
+  return {
+    ...createMissionDraft(speed),
+    turnSpeed: Math.min(speed, Math.max(1, Math.round(maxSpeed * 0.45))),
+  };
+}
+
 export function distanceNm(from: Coordinate, to: Coordinate) {
   const rad = Math.PI / 180;
   const a = Math.sin((to[1] - from[1]) * rad / 2) ** 2 +
@@ -118,6 +127,17 @@ export function missionDistance(draft: MissionDraft) {
   return distance;
 }
 
+// Match the simulator's turn threshold; collinear points need no turn control.
+export function missionHasTurns(draft: MissionDraft): boolean {
+  const points = missionCoordinates(draft);
+  for (let i = 1; i < points.length - 1; i++) {
+    if (distanceNm(points[i - 1], points[i]) < 1e-8 || distanceNm(points[i], points[i + 1]) < 1e-8) continue;
+    const change = Math.abs(((bearingBetween(points[i], points[i + 1]) - bearingBetween(points[i - 1], points[i]) + 540) % 360) - 180);
+    if (change > 5) return true;
+  }
+  return false;
+}
+
 export function missionSpeedError(draft: MissionDraft, maxSpeed = Infinity): string | null {
   if (draft.speed === null || !Number.isFinite(draft.speed) || draft.speed <= 0) return 'Enter a straight-line speed greater than 0 kn.';
   if (draft.speed > maxSpeed) return `Straight-line speed must not exceed the vessel maximum of ${maxSpeed} kn.`;
@@ -159,4 +179,11 @@ export function createDeployment(draft: MissionDraft, position: Coordinate, maxS
     boundary: grid ? grid.boundary.map(point => [...point]) : [],
     speed: draft.speed!, turnSpeed: draft.turnSpeed!,
   };
+}
+
+/** Reserve 100% for confirmed arrival, never for rounded near-completion. */
+export function missionProgressPercent(distance: number, total: number, arrived: boolean): number {
+  if (arrived) return 100;
+  if (!Number.isFinite(distance) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(99, Math.floor(distance / total * 100)));
 }

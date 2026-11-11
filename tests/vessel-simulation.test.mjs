@@ -547,3 +547,59 @@ test('a second vessel starts and resets east without moving the original vessel'
   assert.deepEqual(original.getFrame().position, INITIAL_CENTER);
   assert.equal(original.getFrame().mission, null);
 });
+
+test('mission speed pairs apply atomically without resetting route progress or pause state', () => {
+  const { simulation, step } = setup();
+  assert.equal(simulation.setMissionSpeeds(10, 5), false);
+  simulation.deploy(plan());
+  for (let i = 0; i < 120; i++) step();
+  const before = simulation.getFrame();
+  assert.equal(simulation.setMissionSpeeds(10, 5), true);
+  const after = simulation.getFrame();
+  assert.equal(after.mission.speed, 10);
+  assert.equal(after.mission.turnSpeed, 5);
+  assert.equal(after.distance, before.distance);
+  assert.deepEqual(after.position, before.position);
+  assert.equal(after.targetIndex, before.targetIndex);
+  assert.equal(after.playing, before.playing);
+  assert.deepEqual(after.mission.coordinates, before.mission.coordinates);
+  for (const pair of [[5, 6], [0, 1], [10.5, 4], [Infinity, 4], [999, 4]]) {
+    assert.equal(simulation.setMissionSpeeds(...pair), false);
+    assert.equal(simulation.getFrame().mission.speed, 10);
+    assert.equal(simulation.getFrame().mission.turnSpeed, 5);
+  }
+  simulation.setPlaying(false);
+  assert.equal(simulation.setMissionSpeeds(8, 3), true);
+  assert.equal(simulation.getFrame().playing, false);
+  simulation.abort();
+  assert.equal(simulation.setMissionSpeeds(7, 2), false);
+});
+
+test('activity captures accepted mission actions without duplicate or internal events', () => {
+  const { simulation } = setup();
+  const activity = simulation.activity;
+  let notifications = 0;
+  const unsubscribe = activity.subscribe(() => notifications++);
+  assert.equal(activity.getSnapshot().length, 0);
+  assert.equal(simulation.setMissionSpeeds(10, 3), false);
+  simulation.setVisible(false);
+  assert.equal(activity.getSnapshot().length, 0);
+  simulation.deploy(plan());
+  simulation.setPlaying(false);
+  simulation.setPlaying(false);
+  simulation.setPlaying(true);
+  simulation.setMissionSpeeds(10, 3);
+  simulation.setMissionSpeeds(10, 3);
+  simulation.abort();
+  simulation.abort();
+  assert.deepEqual(activity.getSnapshot().map(e => e.title), ['Mission aborted', 'Speeds changed', 'Mission resumed', 'Mission paused', 'Waypoint mission deployed']);
+  const change = activity.getSnapshot().find(e => e.speeds);
+  assert.deepEqual(change.speeds, { before: [12, 4], after: [10, 3] });
+  assert.equal(notifications, 5);
+  const saved = activity.getSnapshot();
+  simulation.clearFinishedMission();
+  assert.equal(activity.getSnapshot(), saved);
+  simulation.deploy(plan());
+  assert.equal(activity.getSnapshot()[0].missionId, 2);
+  unsubscribe();
+});

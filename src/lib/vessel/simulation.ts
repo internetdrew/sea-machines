@@ -1,3 +1,5 @@
+import { createActivityStore } from './activity.ts';
+import type { InitialActivity } from './activity';
 import {
   bearingBetween,
   destinationFrom,
@@ -63,10 +65,13 @@ export function createVesselSimulation(
   propulsion: PropulsionProfile = DEMO_PROPULSION,
   initialPosition: Coordinate = INITIAL_CENTER,
   initialHeading = INITIAL_HEADING,
+  initialActivity: readonly InitialActivity[] = [],
 ) {
   let position: Coordinate = [...initialPosition];
   let heading = initialHeading;
   let mission: DeployedMission | null = null;
+  let missionId = initialActivity.reduce((latest, entry) => Math.max(latest, entry.missionId), 0);
+  const activity = createActivityStore(500, initialActivity);
   let legs: Leg[] = [];
   let targetIndex = 0;
   let legDistance = 0;
@@ -185,12 +190,18 @@ export function createVesselSimulation(
   function finishLeg() {
     position = [...legs[targetIndex].to];
     sampleTrack(); // Preserve corners so the trail cannot cut across survey passes.
+    if (mission?.type === 'waypoint') {
+      activity.record({ missionId, kind: 'milestone', title: `Waypoint ${targetIndex + 1} reached`, detail: targetIndex + 1 < legs.length ? `Continuing to Waypoint ${targetIndex + 2}` : 'Final waypoint reached', position });
+    } else if (mission?.type === 'grid' && targetIndex % 2 === 1) {
+      activity.record({ missionId, kind: 'milestone', title: `Grid pass ${Math.floor(targetIndex / 2) + 1} completed`, detail: `${mission.targets.length / 2} passes in this mission`, position });
+    }
     targetIndex++;
     legDistance = 0;
     while (legs[targetIndex] && legs[targetIndex].length <= EPSILON)
       targetIndex++;
     if (legs[targetIndex]) heading = legs[targetIndex].heading;
     else {
+      activity.record({ missionId, kind: 'milestone', title: 'Mission completed', detail: `${totalDistance.toFixed(2)} nm travelled`, position });
       distance = totalDistance;
       actualSpeed = throttle = 0;
       playing = false;
@@ -309,6 +320,7 @@ export function createVesselSimulation(
   }
 
   return {
+    activity,
     maxSpeed: propulsion.maxSpeed,
     getFrame: () => frame,
     getSnapshot: () => snapshot,
@@ -330,6 +342,7 @@ export function createVesselSimulation(
       if (!next) return false;
       stopLoop();
       mission = next;
+      missionId++;
       aborted = false;
       cruiseSpeed = next.speed;
       turnSpeed = next.turnSpeed;
@@ -365,13 +378,16 @@ export function createVesselSimulation(
       track = [[...position]];
       heading = legs[targetIndex].heading;
       playing = true;
+      activity.record({ missionId, kind: 'command', title: `${next.type === 'grid' ? 'Grid' : 'Waypoint'} mission deployed`, detail: `${next.targets.length} ${next.type === 'waypoint' ? `waypoint${next.targets.length === 1 ? '' : 's'}` : `target${next.targets.length === 1 ? '' : 's'}`} · straight ${next.speed} kn · turns ${next.turnSpeed} kn`, position });
       command();
       startLoop();
       return true;
     },
     setPlaying(value: boolean) {
+      const wasPlaying = playing;
       playing =
         value && mission !== null && !aborted && targetIndex < legs.length;
+      if (playing !== wasPlaying) activity.record({ missionId, kind: 'command', title: playing ? 'Mission resumed' : 'Mission paused', detail: `Next: ${mission?.type === 'grid' ? 'grid target' : 'Waypoint'} ${targetIndex + 1}`, position });
       if (playing) startLoop();
       else stopLoop();
       command();
@@ -381,6 +397,7 @@ export function createVesselSimulation(
       stopLoop();
       playing = false;
       aborted = true;
+      activity.record({ missionId, kind: 'command', title: 'Mission aborted', detail: 'Remaining route discarded', position });
       actualSpeed = throttle = 0;
       legs = [];
       sampleTrack();
@@ -394,6 +411,19 @@ export function createVesselSimulation(
       aborted = false;
       targetIndex = 0;
       legDistance = distance = totalDistance = lastTrackDistance = 0;
+      command();
+      return true;
+    },
+    setMissionSpeeds(speed: number, nextTurnSpeed: number) {
+      if (!mission || frame.arrived || aborted ||
+        !Number.isInteger(speed) || !Number.isInteger(nextTurnSpeed) ||
+        speed < 1 || speed > propulsion.maxSpeed || nextTurnSpeed < 1 || nextTurnSpeed > speed) return false;
+      if (speed === cruiseSpeed && nextTurnSpeed === turnSpeed) return true;
+      activity.record({ missionId, kind: 'command', title: 'Speeds changed', detail: `Straight ${cruiseSpeed} → ${speed} kn · turns ${turnSpeed} → ${nextTurnSpeed} kn`, position, speeds: { before: [cruiseSpeed, turnSpeed], after: [speed, nextTurnSpeed] } });
+      cruiseSpeed = speed;
+      turnSpeed = nextTurnSpeed;
+      mission = { ...mission, speed, turnSpeed };
+      rebuildSpeedZones();
       command();
       return true;
     },

@@ -11,7 +11,10 @@
   color: #4b9992;
   opacity: 0.3;
   transform-origin: center;
-  transition: transform 150ms cubic-bezier(0.19, 1, 0.22, 1), color 120ms ease, opacity 120ms ease;
+  transition:
+    transform 150ms cubic-bezier(0.19, 1, 0.22, 1),
+    color 120ms ease,
+    opacity 120ms ease;
 }
 
 .vessel-mission-brackets[data-engaged='true'] {
@@ -126,22 +129,22 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --background: var(--color-neutral-900);
+  --foreground: var(--color-neutral-100);
+  --card: var(--color-neutral-900);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: var(--color-neutral-900);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: var(--color-neutral-100);
+  --primary-foreground: var(--color-neutral-950);
   --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: var(--color-neutral-300);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted-foreground: var(--color-neutral-400);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: var(--color-neutral-800);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -204,8 +207,13 @@
 }
 
 .mission-drawer-popup {
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: dark;
   transform: translateX(var(--drawer-swipe-movement-x, 0px));
-  transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* Motion spring({ keyframes: [0, 1], visualDuration: 0.26, bounce: 0.12 }).
+     Visually arrives in 260ms; the remaining time is the subtle spring settle. */
+  transition: transform 500ms linear(0, 0.1371, 0.3825, 0.6066, 0.7719, 0.8794, 0.9428, 0.977, 0.9937, 1.0006, 1.0028, 1.0028, 1.0022, 1.0015, 1.0009, 1.0005, 1), height var(--resize-dur) var(--resize-ease);
   touch-action: pan-y;
 }
 
@@ -214,8 +222,13 @@
   transform: translateX(calc(100% + 2px));
 }
 
+.mission-drawer-popup[data-ending-style] {
+  transition-duration: 220ms, var(--resize-dur);
+  transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1), var(--resize-ease);
+}
+
 .mission-drawer-popup[data-ending-style][data-swipe-dismiss] {
-  transition-duration: calc(var(--drawer-swipe-strength, 1) * 350ms);
+  transition-duration: calc(var(--drawer-swipe-strength, 1) * 220ms), var(--resize-dur);
 }
 
 .mission-drawer-popup[data-swiping] {
@@ -234,7 +247,7 @@
   bottom: calc(var(--map-edge-inset, 1rem) - 10px);
 }
 
-/* Screen-aligned vessel IDs. Labels do not intercept marker or map input. */
+/* Screen-aligned vessel navigation; only the badges intercept map input. */
 .vessel-identities {
   position: absolute;
   inset: 0;
@@ -243,14 +256,19 @@
   z-index: 5;
 }
 .vessel-identity {
+  pointer-events: auto;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
   position: absolute;
   top: 0;
   left: 0;
   padding: 5px 8px;
-  border: 1px solid rgb(145 164 177 / 28%);
+  border: 1px solid var(--color-neutral-800);
   border-radius: 5px;
-  background: #11191ff2;
-  color: #f4f6f8;
+  background: var(--color-neutral-900);
+  color: var(--color-neutral-100);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   font-weight: 500;
@@ -265,14 +283,14 @@
   height: 100%;
   overflow: visible;
   fill: none;
-  stroke: rgb(169 187 198 / 65%);
+  stroke: rgb(163 163 163 / 65%);
   stroke-width: 1;
 }
 
 .vessel-identity-series {
   display: block;
   margin-top: 1px;
-  color: #9ba8b0;
+  color: var(--color-neutral-400);
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 400;
@@ -317,7 +335,10 @@
   opacity: 0;
   filter: blur(2px);
   transform: scale(0.25);
-  transition: opacity 250ms ease-in-out, filter 250ms ease-in-out, transform 250ms ease-in-out;
+  transition:
+    opacity 250ms ease-in-out,
+    filter 250ms ease-in-out,
+    transform 250ms ease-in-out;
 }
 .vessel-copy-icon-swap[data-copied='false'] [data-icon='copy'],
 .vessel-copy-icon-swap[data-copied='true'] [data-icon='check'] {
@@ -335,16 +356,16 @@
   }
 }
 
-/* Charcoal navigation surfaces, matching the reference card. */
+/* Neutral navigation surfaces, matching the mission panels. */
 .maplibregl-ctrl-attrib {
-  --background: #262626;
+  --background: #171717;
   --foreground: #f5f5f5;
-  --muted-foreground: #b5b5b5;
-  --border: #ffffff1f;
+  --muted-foreground: #a3a3a3;
+  --border: #262626;
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
   filter: none;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23a6a6a6%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E');
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:focus {
   box-shadow: none;
@@ -357,24 +378,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button:hover {
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E");
-  }
-}
-
-/* Press acknowledges input; green confirmation remains tied to copy success. */
-.vessel-position-copy:active::before,
-.vessel-position-copy[data-press-pulse='true']::before {
-  opacity: 1;
-  transition: opacity 100ms ease;
-}
-.vessel-position-copy:focus-visible:active::before {
-  opacity: 1;
-  transition: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .vessel-position-copy:active::before,
-  .vessel-position-copy[data-press-pulse='true']::before {
-    transition: none;
+    background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20fill-rule%3D%22evenodd%22%20d%3D%22M4%2010a6%206%200%201%200%2012%200%206%206%200%201%200-12%200m5-3a1%201%200%201%200%202%200%201%201%200%201%200-2%200m0%203a1%201%200%201%201%202%200v3a1%201%200%201%201-2%200%22%2F%3E%3C%2Fsvg%3E');
   }
 }
 
@@ -408,4 +412,210 @@
   .ui-close-button::before {
     transition: none;
   }
+}
+
+/* Resize only on badge content changes; geographic positioning stays immediate. */
+.vessel-identity {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition:
+    width 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    height var(--resize-dur) var(--resize-ease);
+}
+.vessel-identity-content {
+  display: block;
+  width: max-content;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-identity {
+    transition: none;
+  }
+}
+
+/* Confirmation and backdrop share timing; teardown waits for Base UI completion. */
+.mission-discard-backdrop,
+.mission-discard-dialog {
+  opacity: 1;
+  transition:
+    opacity 200ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    transform 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+.mission-discard-dialog {
+  transform: scale(1);
+}
+.mission-discard-backdrop[data-starting-style],
+.mission-discard-backdrop[data-ending-style],
+.mission-discard-dialog[data-starting-style],
+.mission-discard-dialog[data-ending-style] {
+  opacity: 0;
+}
+.mission-discard-dialog[data-starting-style],
+.mission-discard-dialog[data-ending-style] {
+  transform: scale(0.98);
+}
+.mission-discard-backdrop[data-ending-style],
+.mission-discard-dialog[data-ending-style] {
+  transition-duration: 160ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-discard-backdrop,
+  .mission-discard-dialog {
+    transition: none;
+  }
+}
+
+/* Unavailable fleet identities remain readable during mission planning. */
+.vessel-identity[data-unavailable='true'] {
+  opacity: 0.7;
+}
+
+.vessel-identity[data-unavailable='true'] .vessel-identity-series {
+  color: var(--color-neutral-300);
+}
+
+/* Continuous mission-speed controls: muted travel, a single small throttle. */
+.mission-speed-control { padding: 14px 0 7px; }
+.mission-speed-control + .mission-speed-control { margin-top: 7px; }
+.mission-speed-value { appearance: textfield; }
+.mission-speed-value::-webkit-inner-spin-button,
+.mission-speed-value::-webkit-outer-spin-button { appearance: none; margin: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .mission-speed-value:hover { border-bottom-color: rgb(255 255 255 / 25%); }
+}
+.mission-speed-slider {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(to right, #8eafa9 var(--speed-fill), #3d484e var(--speed-fill)) center / 100% 3px no-repeat;
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+.mission-speed-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 27px;
+  border: 0;
+  border-radius: 4px;
+  background: #d0e2de;
+  box-shadow: inset 0 0 0 1px #ffffff4d, 0 1px 3px #0005;
+}
+.mission-speed-slider::-moz-range-thumb {
+  width: 13px;
+  height: 27px;
+  border: 0;
+  border-radius: 4px;
+  background: #d0e2de;
+  box-shadow: inset 0 0 0 1px #ffffff4d, 0 1px 3px #0005;
+}
+.mission-speed-slider:focus-visible {
+  outline: 2px solid #a3c6c9;
+  outline-offset: 1px;
+}
+
+
+/* Paired speed assemblies wrap naturally when the drawer becomes narrow. */
+.mission-speed-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 10px 20px;
+  margin-top: 12px;
+}
+.mission-speed-pair .mission-speed-control { min-width: 0; padding: 6px 0; }
+.mission-speed-pair .mission-speed-control + .mission-speed-control { margin-top: 0; }
+.mission-speed-pair .mission-speed-heading { display: block; }
+.mission-speed-pair .mission-speed-heading label { font-size: 11px; }
+.mission-speed-pair .mission-speed-readout { margin-top: 7px; }
+.mission-speed-pair .mission-speed-value {
+  width: 2.4ch;
+  padding-inline: 0;
+  text-align: left;
+  font-size: 19px;
+}
+.mission-speed-pair .mission-speed-readout > span { font-size: 10px; }
+.mission-speed-pair .mission-speed-rail { margin-top: 2px; }
+.mission-speed-pair .mission-speed-limits { display: none; }
+.mission-speed-pair .mission-speed-slider::-webkit-slider-thumb { width: 10px; height: 20px; border-radius: 3px; }
+.mission-speed-pair .mission-speed-slider::-moz-range-thumb { width: 10px; height: 20px; border-radius: 3px; }
+
+/* Shared CTA hover timing; focus and disabled feedback remain immediate. */
+.mission-cta {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.mission-cta:focus-visible,
+.mission-cta:disabled,
+.mission-cta[data-disabled] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-cta { transition: none; }
+}
+
+/* Activity rail uses the same calm drawer movement, from the left. */
+.activity-drawer-popup {
+  transform: translateX(var(--drawer-swipe-movement-x, 0px));
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.activity-drawer-popup[data-starting-style],
+.activity-drawer-popup[data-ending-style] { transform: translateX(calc(-100% - 20px)); }
+.activity-drawer-popup[data-swiping] { transition-duration: 0ms; }
+@media (prefers-reduced-motion: reduce) {
+  .activity-drawer-popup { transition: none; }
+}
+
+/* Transitions.dev resize timing, using Base UI's measured content height. */
+.activity-event-panel {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  transition: height 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.activity-event-panel[data-starting-style],
+.activity-event-panel[data-ending-style] {
+  height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .activity-event-panel { transition: none; }
+}
+
+/* Two glyphs share one stable slot; the owning control supplies the state. */
+.icon-swap {
+  --icon-swap-duration: 200ms;
+  --icon-swap-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --icon-swap-blur: 1px;
+  --icon-swap-start-scale: 0.65;
+  position: relative;
+  display: inline-grid;
+}
+.icon-swap-glyph {
+  grid-area: 1 / 1;
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+  transition:
+    opacity var(--icon-swap-duration) var(--icon-swap-ease),
+    filter var(--icon-swap-duration) var(--icon-swap-ease),
+    transform var(--icon-swap-duration) var(--icon-swap-ease);
+}
+.icon-swap[data-swapped='false'] [data-icon='a'],
+.icon-swap[data-swapped='true'] [data-icon='b'] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-swap-glyph { transition: none; }
+}
+
+.vessel-identity:focus-visible {
+  outline: 2px solid var(--color-neutral-100);
+  outline-offset: 3px;
+}
+.vessel-identity:disabled { cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .vessel-identity:not(:disabled):hover { background: var(--color-neutral-800); }
 }

@@ -22,7 +22,7 @@ export function TextSwap({
 
   return (
     <span
-      className={`relative inline-flex whitespace-nowrap ${className ?? ''}`}
+      className={`relative inline-flex justify-center whitespace-nowrap ${className ?? ''}`}
     >
       <span className='sr-only'>{text}</span>
       {reducedMotion ? (

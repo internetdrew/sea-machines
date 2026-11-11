@@ -1,3 +1,4 @@
+import { WaypointCoordinateTooltip } from './WaypointCoordinateTooltip';
 import { memo } from 'react';
 import { MapGeoJSON, MapMarker, MarkerContent } from '@/components/ui/map';
 import type { VesselFrame } from '@/lib/vessel/simulation';
@@ -26,7 +27,7 @@ export const ActiveMissionLayer = memo(function ActiveMissionLayer({ vesselId, f
   return <>
     {departureMarker}
     {mission.targets.map((point, index) => <MapMarker key={index} longitude={point[0]} latitude={point[1]}>
-      <MarkerContent><span aria-label={`${index < frame.targetIndex ? 'Completed' : 'Deployed'} waypoint ${index + 1}`} className={`flex size-6 items-center justify-center rounded-full border-2 text-[10px] font-medium shadow-sm ${index < frame.targetIndex ? 'border-neutral-400 bg-neutral-700 text-neutral-300' : 'border-white bg-teal-600 text-white'}`}>{index + 1}</span></MarkerContent>
+      <MarkerContent><WaypointCoordinateTooltip coordinate={point}><span tabIndex={0} aria-label={`${index < frame.targetIndex ? 'Completed' : 'Deployed'} waypoint ${index + 1}`} className={`flex size-6 items-center justify-center rounded-full border-2 text-[10px] font-medium shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100 ${index < frame.targetIndex ? 'border-neutral-400 bg-neutral-700 text-neutral-300' : 'border-white bg-teal-600 text-white'}`}>{index + 1}</span></WaypointCoordinateTooltip></MarkerContent>
     </MapMarker>)}
   </>;
 });

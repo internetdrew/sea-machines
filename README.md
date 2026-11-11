@@ -45,3 +45,5 @@ Built with React, TypeScript, Vite, MapLibre/mapcn, Tailwind CSS, Base UI, and M
 - `src/components/ui/map.tsx` — Shared mapcn components and tooltip variants.
 
 One simulation clock keeps vessel movement, trails, range rings, and camera tracking synchronized. React receives telemetry snapshots at 4 Hz. Automated tests cover the underlying logic; browser verification is still needed for WebGL rendering and interactions.
+
+Cross-surface UI state and the completed migration checklist are documented in [Fleet interactions](docs/fleet-interactions.md).
