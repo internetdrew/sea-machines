@@ -1,4 +1,6 @@
-import { useFleetInteraction } from '@/lib/vessel/use-interactions';
+import { DEFAULT_MAP_ZOOM } from '@/lib/vessel/navigation';
+import { getVesselIdentity } from '@/lib/vessel/vessel';
+import { useFleetInteraction, useFleetInteractions } from '@/lib/vessel/use-interactions';
 import { selectPlanningVesselId } from '@/lib/vessel/interactions';
 import { useLayoutEffect, useRef } from 'react';
 import { useMap } from '@/components/ui/map';
@@ -7,7 +9,8 @@ import type { LabelRect, LabelSide } from '@/lib/vessel/label-placement';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 // Separate viewport overlay: vessel headings never rotate the identity text.
-export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
+export function FleetLabels({ vessels, onFocusVessel }: { vessels: readonly Vessel[]; onFocusVessel: () => void }) {
+  const interactions = useFleetInteractions();
   const planningVesselId = useFleetInteraction(selectPlanningVesselId);
   const lockedVesselId = planningVesselId;
   const { map, isLoaded } = useMap();
@@ -16,10 +19,37 @@ export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
     if (!map || !isLoaded || !root.current) return;
     const overlay = root.current;
     const entries = vessels.map(vessel => {
-      const label = document.createElement('div');
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.setAttribute('aria-label', `Focus ${getVesselIdentity(vessel)} on map`);
+      // Keep taps on badges out of map gestures and waypoint placement.
+      const stopPropagation = (event: Event) => event.stopPropagation();
+      label.addEventListener('mousedown', stopPropagation);
+      label.addEventListener('touchstart', stopPropagation);
+      label.addEventListener('click', event => {
+        event.stopPropagation();
+        if (selectPlanningVesselId(interactions.getSnapshot())) return;
+        onFocusVessel();
+        const container = map.getContainer();
+        const occupied = (selector: string, side: 'left' | 'right') => {
+          const panel = container.querySelector<HTMLElement>(selector);
+          if (!panel || panel.hasAttribute('data-ending-style')) return 0;
+          const bounds = panel.getBoundingClientRect();
+          const viewport = container.getBoundingClientRect();
+          return Math.max(0, Math.min(container.clientWidth, side === 'left' ? bounds.right - viewport.left : viewport.right - bounds.left));
+        };
+        const left = occupied('.activity-drawer-popup', 'left');
+        const right = occupied('.mission-drawer-popup', 'right');
+        map.easeTo({
+          center: vessel.simulation.getFrame().position,
+          zoom: Math.max(map.getZoom(), DEFAULT_MAP_ZOOM),
+          offset: [(left - right) / 2, 0],
+          duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
+        });
+      });
       label.className = 'vessel-identity';
       label.dataset.vesselId = vessel.id;
-      const content = document.createElement('div');
+      const content = document.createElement('span');
       content.className = 'vessel-identity-content';
       const fleetId = document.createElement('span');
       fleetId.textContent = vessel.id;
@@ -94,16 +124,19 @@ export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
       map.off('resize', scheduleUpdate);
       entries.forEach(({ label, line }) => { label.remove(); line.remove(); });
     };
-  }, [map, isLoaded, vessels]);
+  }, [map, isLoaded, vessels, interactions, onFocusVessel]);
   useLayoutEffect(() => {
     if (!root.current) return;
     // Preserve the badge nodes; only their content and target dimensions change.
-    const labels = [...root.current.querySelectorAll<HTMLElement>('.vessel-identity')];
+    const labels = [...root.current.querySelectorAll<HTMLButtonElement>('.vessel-identity')];
     const targets = labels.flatMap(label => {
       const vessel = vessels.find(vessel => vessel.id === label.dataset.vesselId);
       const content = label.querySelector<HTMLElement>('.vessel-identity-content');
       const series = label.querySelector<HTMLElement>('.vessel-identity-series');
       if (!vessel || !content || !series) return [];
+      label.disabled = planningVesselId !== null;
+      if (label.disabled) label.setAttribute('aria-describedby', 'vessel-selection-status');
+      else label.removeAttribute('aria-describedby');
       label.dataset.unavailable = String(lockedVesselId !== null && lockedVesselId !== vessel.id);
       series.textContent = vessel.series.label + (planningVesselId === vessel.id ? ' · Planning' : '');
       return [{ label, content }];
@@ -114,5 +147,5 @@ export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
       label.style.height = `${height}px`;
     });
   }, [map, isLoaded, vessels, planningVesselId, lockedVesselId]);
-  return <div ref={root} className='vessel-identities' aria-hidden='true' />;
+  return <div ref={root} className='vessel-identities' />;
 }

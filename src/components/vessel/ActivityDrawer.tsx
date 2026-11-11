@@ -1,10 +1,12 @@
+import { IconSwap } from '@/components/IconSwap';
+import { TextSwap } from '@/components/TextSwap';
 import { useFleetInteraction, useFleetInteractions } from '@/lib/vessel/use-interactions';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 import { Drawer } from '@base-ui/react/drawer';
 import { Select } from '@base-ui/react/select';
 import { Collapsible } from '@base-ui/react/collapsible';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useMap } from '@/components/ui/map';
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { DEFAULT_MAP_ZOOM } from '@/lib/vessel/navigation';
@@ -37,7 +39,7 @@ function ActivityEntry({ event, showVessel }: { event: Entry; showVessel: boolea
       {showVessel && <span className='shrink-0 rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-neutral-300'>{event.vesselId}</span>}
       <span className={`min-w-0 flex-1 truncate text-xs font-medium ${tone}`}>{event.title}</span>
       <time dateTime={new Date(event.timestamp).toISOString()} className='shrink-0 font-mono text-[10px] text-neutral-400'>{time.format(event.timestamp)}</time>
-      <ChevronDown aria-hidden='true' className={`size-3.5 shrink-0 text-neutral-400 ${open ? 'rotate-180' : ''}`} />
+      <IconSwap swapped={open} iconA={<ChevronDown className='size-3.5' />} iconB={<ChevronUp className='size-3.5' />} className='size-3.5 shrink-0 text-neutral-400' />
     </Collapsible.Trigger>
     <Collapsible.Panel className='activity-event-panel'>
       <div className='border-t border-white/5 bg-neutral-800 p-3 text-[11px] text-neutral-200'>
@@ -87,10 +89,11 @@ function ActivityBody({ vessels, initialVesselId, open }: { vessels: readonly Ve
   const visible = live.filter(e => (filter === 'all' || e.vesselId === filter) && (kind === 'all' || e.kind === kind));
   return <>
     <header className='shrink-0 px-5 pt-5 pb-4'>
-      <Drawer.Description className='mb-2 pr-8 text-xs tracking-wide text-muted-foreground'>{filter === 'all' ? 'All vessels' : getVesselIdentity(vessels.find(v => v.id === filter)!)}</Drawer.Description>
+      <Drawer.Description className='mb-2 pr-8 text-xs tracking-wide text-muted-foreground'>
+        <TextSwap text={filter === 'all' ? 'All vessels' : getVesselIdentity(vessels.find(v => v.id === filter)!)} />
+      </Drawer.Description>
       <Drawer.Title className='pr-8 text-lg font-medium'>Activity log</Drawer.Title>
       <Drawer.Close aria-label='Close activity log' className={`absolute top-5 right-5 ${CLOSE_BUTTON_CLASS}`}><X className='size-4' /></Drawer.Close>
-      <p className='mt-3 text-[11px] text-neutral-300'>● Live activity</p>
     </header>
     <div className='grid shrink-0 grid-cols-2 gap-2 px-5 pb-3'>
       <Filter value={filter} onChange={setFilter} label='Filter activity by vessel' items={[{ value:'all', label:'All vessels' }, ...vessels.map(v => ({ value:v.id, label:v.id }))]} />

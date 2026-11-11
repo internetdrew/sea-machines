@@ -70,7 +70,7 @@ function App() {
           showRangeRings={showRangeRings}
           onPan={stopFollowing}
         />)}
-        <FleetLabels vessels={vessels} />
+        <FleetLabels vessels={vessels} onFocusVessel={stopFollowing} />
         <NavigationTooltipProvider delay={350}>
         <div className='map-toolbar text-neutral-100 [--background:#171717] [--foreground:#f5f5f5] [--accent:#262626] [--border:#262626] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen onFitFleet={fitFleet} />
