@@ -1,3 +1,4 @@
+import { useFleetInteractions } from '@/lib/vessel/use-interactions';
 import { NavigationTooltip, NavigationTooltipProvider } from '@/components/NavigationTooltip';
 import { useMap } from '@/components/ui/map';
 import { TextSwap } from '@/components/TextSwap';
@@ -21,6 +22,7 @@ import type { Vessel } from '@/lib/vessel/vessel';
 import { MissionOperations } from './MissionOperations';
 
 export function MissionMonitor({ vessel }: { vessel: Vessel }) {
+  const interactions = useFleetInteractions();
   const { map } = useMap();
   const reducedMotion = useReducedMotion();
   const snapshot = useSyncExternalStore(
@@ -110,12 +112,12 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
               <dl className='mt-4 grid grid-cols-2 gap-4'>
                 <div>
                   <dt className='text-[10px] text-muted-foreground'>Distance to waypoint</dt>
-                  <dd className='mt-1 text-xl font-medium'><NumberPopIn value={snapshot.remaining.toFixed(2)} /> <span className='text-xs font-normal text-[#b1c2cb]'>nm</span></dd>
+                  <dd className='mt-1 text-xl font-medium'><NumberPopIn value={snapshot.remaining.toFixed(2)} /> <span className='text-xs font-normal text-neutral-400'>nm</span></dd>
                 </div>
                 <div>
                   <dt className='text-[10px] text-muted-foreground'>Est. time to waypoint</dt>
                   <dd className='mt-1 text-xl font-medium'>{snapshot.playing && snapshot.speed > 0
-                    ? <>~<NumberPopIn value={String(Math.max(1, Math.ceil(snapshot.remaining / snapshot.speed * 60)))} /> <span className='text-xs font-normal text-[#b1c2cb]'>min</span></>
+                    ? <>~<NumberPopIn value={String(Math.max(1, Math.ceil(snapshot.remaining / snapshot.speed * 60)))} /> <span className='text-xs font-normal text-neutral-400'>min</span></>
                     : <span className='text-sm text-muted-foreground'>{snapshot.playing ? 'Calculating…' : 'Paused'}</span>}</dd>
                 </div>
               </dl>
@@ -129,7 +131,7 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
                 </Progress.Label>
                 <Progress.Value className='text-[21px] font-medium'>{() => <NumberPopIn value={`${Math.round(percent)}%`} />}</Progress.Value>
               </div>
-              <Progress.Track className='h-1 overflow-hidden rounded-full bg-[#354147]'>
+              <Progress.Track className='h-1 overflow-hidden rounded-full bg-neutral-800'>
                 <Progress.Indicator style={{ width: '100%' }} className={`h-full origin-left rounded-full ${snapshot.phase === 'aborted' ? 'bg-neutral-400' : 'bg-[#8eafa9]'}`} render={
                   <motion.div initial={false} animate={{ transform: `scaleX(${percent / 100})` }} transition={{ duration: reducedMotion ? 0 : 0.25, ease: 'linear' }} />
                 } />
@@ -148,11 +150,11 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
           )}
           <section aria-label='Mission speeds' className='mt-7 text-xs tabular-nums'>
             <div className='flex items-center justify-between gap-3'>
-              <h3 className='text-[11px] font-medium text-[#adbcc4]'>Mission speeds</h3>
+              <h3 className='text-[11px] font-medium text-neutral-400'>Mission speeds</h3>
               {active && (
                 <NavigationTooltipProvider delay={350}>
                   <NavigationTooltip label='Edit mission speeds' container={map?.getContainer()}>
-                    <Button ref={editButton} aria-label='Edit mission speeds' aria-expanded={editingSpeeds} aria-controls='mission-speed-editor' onClick={() => { setConfirmation(''); setSpeedFailure(''); setPendingStraight(mission.speed); setPendingTurn(mission.turnSpeed); setEditingSpeeds(true); }} className={`${CLOSE_BUTTON_CLASS} text-[#bfcecf] ${editingSpeeds ? 'invisible' : ''}`}>
+                    <Button ref={editButton} aria-label='Edit mission speeds' aria-expanded={editingSpeeds} aria-controls='mission-speed-editor' onClick={() => { setConfirmation(''); setSpeedFailure(''); setPendingStraight(mission.speed); setPendingTurn(mission.turnSpeed); setEditingSpeeds(true); }} className={`${CLOSE_BUTTON_CLASS} text-neutral-300 ${editingSpeeds ? 'invisible' : ''}`}>
                       <SlidersHorizontal aria-hidden='true' className='size-4' />
                     </Button>
                   </NavigationTooltip>
@@ -161,8 +163,8 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
             </div>
             <div id='mission-speed-editor'>
             {editingSpeeds && active ? <MissionSpeedEditor vessel={vessel} straight={pendingStraight} turn={pendingTurn} setStraight={setPendingStraight} setTurn={setPendingTurn} error={speedError || speedFailure} onCancel={() => closeSpeedEditor(false)} /> : <dl className='mt-2 grid grid-cols-2 gap-3'>
-              <div><dt className='text-[11px] text-[#a7b5bd]'>Straight-line</dt><dd className='mt-1 text-lg leading-tight font-medium'>{mission.speed}<span className='ml-1 text-[11px] font-normal text-[#b1c2cb]'>kn</span></dd></div>
-              <div><dt className='text-[11px] text-[#a7b5bd]'>Turns</dt><dd className='mt-1 text-lg leading-tight font-medium'>{mission.turnSpeed}<span className='ml-1 text-[11px] font-normal text-[#b1c2cb]'>kn</span></dd></div>
+              <div><dt className='text-[11px] text-neutral-400'>Straight-line</dt><dd className='mt-1 text-lg leading-tight font-medium'>{mission.speed}<span className='ml-1 text-[11px] font-normal text-neutral-400'>kn</span></dd></div>
+              <div><dt className='text-[11px] text-neutral-400'>Turns</dt><dd className='mt-1 text-lg leading-tight font-medium'>{mission.turnSpeed}<span className='ml-1 text-[11px] font-normal text-neutral-400'>kn</span></dd></div>
             </dl>}
             </div>
             <p role='status' aria-live='polite' className='mt-2 text-[10px] text-muted-foreground'>{confirmation}</p>
@@ -177,7 +179,7 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
               if (validSpeed(pendingStraight) && validSpeed(pendingTurn) && vessel.simulation.setMissionSpeeds(pendingStraight, pendingTurn)) closeSpeedEditor(true);
               else setSpeedFailure('Unable to update speeds. The mission may have ended.');
             }}>Apply speeds</Button>
-            <Button type='button' className='mission-cta min-h-9 w-full cursor-pointer rounded-md bg-[#2b3033] px-3 py-2 text-xs font-medium text-[#bcbcb7] hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100' onClick={() => closeSpeedEditor(false)}>Cancel</Button>
+            <Button type='button' className='mission-cta min-h-9 w-full cursor-pointer rounded-md bg-neutral-800 px-3 py-2 text-xs font-medium text-neutral-300 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-100' onClick={() => closeSpeedEditor(false)}>Cancel</Button>
           </div>
         ) : active ? (
           <MissionOperations
@@ -187,7 +189,7 @@ export function MissionMonitor({ vessel }: { vessel: Vessel }) {
           />
         ) : (
           <Button
-            onClick={() => vessel.simulation.clearFinishedMission()}
+            onClick={() => { if (vessel.simulation.clearFinishedMission()) interactions.dispatch({ type: 'plan-new-mission', vesselId: vessel.id }); }}
             className='mission-cta flex min-h-9 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
           >
             Plan a new mission

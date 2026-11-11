@@ -17,7 +17,7 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
   return (
     <div className='mission-speed-control' data-base-ui-swipe-ignore>
       <div className='mission-speed-heading flex items-baseline justify-between gap-4'>
-        <label id={`${id}-label`} htmlFor={id} className='text-xs font-medium text-[#e1e7ea]'>{label}</label>
+        <label id={`${id}-label`} htmlFor={id} className='text-xs font-medium text-neutral-200'>{label}</label>
         <div className='mission-speed-readout flex items-baseline gap-1'>
           <input
             type='number'
@@ -32,7 +32,7 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
             }}
             className='text-neutral-100 mission-speed-value w-14 rounded-sm border-b border-transparent bg-transparent px-0.5 text-right text-[22px] font-medium tabular-nums focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
           />
-          <span className='text-xs text-[#a8b5bd]'>kn</span>
+          <span className='text-xs text-neutral-400'>kn</span>
         </div>
       </div>
       <div className='mission-speed-rail mt-[3px] px-[7px]'>
@@ -48,7 +48,7 @@ export function MissionSpeedControl({ label, value, max, onValueChange, errorId 
           style={{ '--speed-fill': `${fill}%` } as CSSProperties}
           className='mission-speed-slider'
         />
-        <div aria-hidden='true' className='mission-speed-limits flex justify-between text-[10px] text-[#a4b3bc] tabular-nums'>
+        <div aria-hidden='true' className='mission-speed-limits flex justify-between text-[10px] text-neutral-400 tabular-nums'>
           <span>{min}</span><span>{limit}</span>
         </div>
       </div>

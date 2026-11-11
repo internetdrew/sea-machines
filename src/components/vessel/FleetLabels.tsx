@@ -1,11 +1,15 @@
+import { useFleetInteraction } from '@/lib/vessel/use-interactions';
+import { selectPlanningVesselId } from '@/lib/vessel/interactions';
 import { useLayoutEffect, useRef } from 'react';
 import { useMap } from '@/components/ui/map';
-import { placeVesselLabel } from '@/lib/vessel/label-placement';
+import { placeVesselLabel, relativeLabelRect } from '@/lib/vessel/label-placement';
 import type { LabelRect, LabelSide } from '@/lib/vessel/label-placement';
 import type { Vessel } from '@/lib/vessel/vessel';
 
 // Separate viewport overlay: vessel headings never rotate the identity text.
-export function FleetLabels({ vessels, planningVesselId, lockedVesselId }: { vessels: readonly Vessel[]; planningVesselId: string | null; lockedVesselId: string | null }) {
+export function FleetLabels({ vessels }: { vessels: readonly Vessel[] }) {
+  const planningVesselId = useFleetInteraction(selectPlanningVesselId);
+  const lockedVesselId = planningVesselId;
   const { map, isLoaded } = useMap();
   const root = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -21,7 +25,6 @@ export function FleetLabels({ vessels, planningVesselId, lockedVesselId }: { ves
       fleetId.textContent = vessel.id;
       const series = document.createElement('span');
       series.className = 'vessel-identity-series';
-      label.dataset.unavailable = String(lockedVesselId !== null && lockedVesselId !== vessel.id);
       series.textContent = vessel.series.label;
       content.append(fleetId, series);
       label.append(content);
@@ -32,37 +35,27 @@ export function FleetLabels({ vessels, planningVesselId, lockedVesselId }: { ves
       overlay.append(line, label);
       return { vessel, label, line, path, side: 'below' as LabelSide };
     });
-    const outlines = new WeakMap<SVGGeometryElement, DOMPoint[]>();
     const update = () => {
-      const container = map.getContainer().getBoundingClientRect();
+      const overlayBounds = overlay.getBoundingClientRect();
+      const viewport = { width: overlay.clientWidth, height: overlay.clientHeight };
+      if (!overlayBounds.width || !overlayBounds.height) return;
       const images = [...map.getContainer().querySelectorAll<SVGSVGElement>('[data-vessel-hull]')];
       // Batch all geometry reads before positioning any labels.
       const measurements = entries.flatMap(entry => {
         const image = images.find(image => image.dataset.vesselHull === entry.vessel.id);
         if (!image) return [];
         const outline = image.querySelector<SVGGeometryElement>('path');
-        const matrix = outline?.getScreenCTM();
-        if (!outline || !matrix) return [];
-        let points = outlines.get(outline);
-        if (!points) {
-          const length = outline.getTotalLength();
-          points = Array.from({ length: Math.ceil(length) + 1 }, (_, index) => outline.getPointAtLength(Math.min(index, length)));
-          outlines.set(outline, points);
-        }
-        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-        for (const point of points) {
-          const screen = point.matrixTransform(matrix);
-          left = Math.min(left, screen.x); right = Math.max(right, screen.x);
-          top = Math.min(top, screen.y); bottom = Math.max(bottom, screen.y);
-        }
-        // Include the 1.5-unit SVG outline, transformed into screen pixels.
-        const strokeX = 0.75 * Math.hypot(matrix.a, matrix.c);
-        const strokeY = 0.75 * Math.hypot(matrix.b, matrix.d);
-        return [{ entry, hull: { x: left - strokeX - container.left, y: top - strokeY - container.top, width: right - left + 2 * strokeX, height: bottom - top + 2 * strokeY }, size: { width: entry.label.offsetWidth, height: entry.label.offsetHeight } }];
+        if (!outline) return [];
+        // Use rendered CSS bounds, not SVG screen matrices: ancestor transforms
+        // and zoom are not represented consistently by getScreenCTM in WebKit.
+        const bounds = relativeLabelRect(outline.getBoundingClientRect(), overlayBounds, viewport);
+        // A small inset allowance includes the hull stroke in collision checks.
+        const hull = { x: bounds.x - 1, y: bounds.y - 1, width: bounds.width + 2, height: bounds.height + 2 };
+        return [{ entry, hull, size: { width: entry.label.offsetWidth, height: entry.label.offsetHeight } }];
       });
       const occupied: LabelRect[] = measurements.map(item => item.hull);
       for (const { entry, hull, size } of measurements) {
-        const placement = placeVesselLabel(hull, size, container, occupied, entry.side);
+        const placement = placeVesselLabel(hull, size, viewport, occupied, entry.side);
         occupied.push(placement);
         entry.side = placement.side;
         entry.label.style.transform = `translate(${placement.x}px, ${placement.y}px)`;
@@ -76,17 +69,29 @@ export function FleetLabels({ vessels, planningVesselId, lockedVesselId }: { ves
         entry.path.setAttribute('d', `M${centerX + dx * factor} ${centerY + dy * factor}L${endX} ${endY}`);
       }
     };
-    const unsubscribe = vessels.map(vessel => vessel.simulation.subscribeFrames(update));
-    map.on('move', update);
-    map.on('resize', update);
-    const resizeObserver = new ResizeObserver(update);
+    // Coalesce telemetry/resize notifications and read after marker DOM writes.
+    let pendingFrame = 0;
+    const scheduleUpdate = () => {
+      if (pendingFrame) return;
+      pendingFrame = requestAnimationFrame(() => { pendingFrame = 0; update(); });
+    };
+    const rendered = () => {
+      cancelAnimationFrame(pendingFrame);
+      pendingFrame = 0;
+      update();
+    };
+    const unsubscribe = vessels.map(vessel => vessel.simulation.subscribeFrames(scheduleUpdate));
+    map.on('render', rendered);
+    map.on('resize', scheduleUpdate);
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
     entries.forEach(({ label }) => resizeObserver.observe(label));
     update();
     return () => {
       resizeObserver.disconnect();
       unsubscribe.forEach(cleanup => cleanup());
-      map.off('move', update);
-      map.off('resize', update);
+      cancelAnimationFrame(pendingFrame);
+      map.off('render', rendered);
+      map.off('resize', scheduleUpdate);
       entries.forEach(({ label, line }) => { label.remove(); line.remove(); });
     };
   }, [map, isLoaded, vessels]);

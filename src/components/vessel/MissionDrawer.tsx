@@ -1,3 +1,4 @@
+import { useFleetInteraction, useFleetInteractions } from '@/lib/vessel/use-interactions';
 import {
   useCallback,
   useEffect,
@@ -7,7 +8,6 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { syncMissionDrawerSize } from '@/lib/mission-drawer-size';
-import { syncDrawerControls } from '@/lib/drawer-controls-motion';
 import type { ComponentProps, RefObject } from 'react';
 import { Drawer } from '@base-ui/react/drawer';
 import { useMap } from '@/components/ui/map';
@@ -24,34 +24,13 @@ import { DEFAULT_MAP_ZOOM } from '@/lib/vessel/navigation';
 import type { MissionDraft } from '@/lib/vessel/mission';
 import { MissionMonitor } from './MissionMonitor';
 
-function MissionDrawerBody({
-  onSelectionChange,
-  selectionLocked,
-  ...props
-}: ComponentProps<typeof MissionPlanner> & {
-  selectionLocked: boolean;
-  onSelectionChange?: (
-    id: string | null,
-    planning: boolean,
-    locked: boolean,
-  ) => void;
-}) {
+function MissionDrawerBody(props: ComponentProps<typeof MissionPlanner>) {
   const { map } = useMap();
   const snapshot = useSyncExternalStore(
     props.vessel.simulation.subscribe,
     props.vessel.simulation.getSnapshot,
   );
   const planning = !snapshot.mission;
-  useEffect(() => {
-    if (!props.isOpen) return;
-    onSelectionChange?.(props.vessel.id, planning, planning && selectionLocked);
-  }, [
-    props.isOpen,
-    props.vessel.id,
-    planning,
-    selectionLocked,
-    onSelectionChange,
-  ]);
   const frameOpening = useEffectEvent(() => {
     if (!map) return;
     const coordinates = missionCoordinates(props.draft);
@@ -69,7 +48,7 @@ function MissionDrawerBody({
     const width =
       container.querySelector('.mission-drawer-popup')?.getBoundingClientRect()
         .width ?? 384;
-    const occupied = Math.min(width + 32, container.clientWidth - 80);
+    const occupied = Math.min(width + 74, container.clientWidth - 80);
     map.easeTo({
       center: props.vessel.simulation.getFrame().position,
       zoom: Math.max(map.getZoom(), DEFAULT_MAP_ZOOM),
@@ -102,19 +81,14 @@ export function MissionDrawer({
   handle,
   vessels,
   onDeploy,
-  onSelectionChange,
 }: {
   handle: Drawer.Handle<MissionDrawerPayload>;
   vessels: readonly Vessel[];
   onDeploy?: () => void;
-  onSelectionChange?: (
-    id: string | null,
-    planning: boolean,
-    locked: boolean,
-  ) => void;
 }) {
   const { map } = useMap();
-  const [open, setOpen] = useState(false);
+  const interactions = useFleetInteractions();
+  const open = useFleetInteraction(state => state.missionPanel !== null);
   const closeGuard = useRef<(() => boolean) | null>(null);
   const registerCloseGuard = useCallback((guard: () => boolean) => {
     closeGuard.current = guard;
@@ -122,18 +96,12 @@ export function MissionDrawer({
       if (closeGuard.current === guard) closeGuard.current = null;
     };
   }, []);
-  const [lockedVesselId, setLockedVesselId] = useState<string | null>(null);
   const [steps, setSteps] = useState<Record<string, MissionPlanningStep>>({});
   const [drafts, setDrafts] = useState<Record<string, MissionDraft>>({});
   const attachDrawerMotion = useCallback(
     (popup: HTMLDivElement | null) => {
       if (!popup || !map) return;
-      const stopMotion = syncDrawerControls(map.getContainer(), popup);
-      const stopSizing = syncMissionDrawerSize(popup);
-      return () => {
-        stopSizing();
-        stopMotion?.();
-      };
+      return syncMissionDrawerSize(popup);
     },
     [map],
   );
@@ -147,9 +115,16 @@ export function MissionDrawer({
             details.cancel();
             return;
           }
-          onSelectionChange?.(null, false, false);
+          interactions.dispatch({ type: 'close-mission' });
         }
-        setOpen(nextOpen);
+        if (nextOpen) {
+          const id = details.trigger?.getAttribute('data-vessel-id');
+          const vessel = vessels.find(candidate => candidate.id === id);
+          if (!vessel) { details.cancel(); return; }
+          const current = interactions.getSnapshot().missionPanel;
+          if (current?.planning && current.vesselId !== id) { details.cancel(); return; }
+          interactions.dispatch({ type: 'open-mission', vesselId: vessel.id, planning: !vessel.simulation.getSnapshot().mission });
+        }
       }}
       swipeDirection='right'
       modal={false}
@@ -161,11 +136,11 @@ export function MissionDrawer({
         );
         return (
           <Drawer.Portal container={map?.getContainer()}>
-            <Drawer.Viewport className='pointer-events-none fixed inset-0 my-(--map-edge-inset) mr-4 z-60 flex justify-end overflow-hidden'>
+            <Drawer.Viewport className='mission-drawer-viewport pointer-events-none fixed inset-0 my-(--map-edge-inset) ml-4 mr-[calc(var(--map-edge-inset,1rem)+2.125rem+0.5rem)] z-60 flex justify-end overflow-hidden'>
               <Drawer.Popup
                 ref={attachDrawerMotion}
                 finalFocus={() => payload?.returnFocus.current ?? false}
-                className='dark mission-drawer-popup pointer-events-auto relative flex self-start flex-col rounded-2xl max-h-full w-96 max-w-[calc(100vw-24px)] overflow-hidden border border-white/10 bg-[#1d2123] text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none'
+                className='dark mission-drawer-popup pointer-events-auto relative flex self-start flex-col rounded-2xl max-h-full w-96 max-w-full overflow-hidden border border-neutral-800 bg-neutral-900 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none'
               >
                 <Drawer.Content className='mission-drawer-content relative flex min-h-0 flex-1 flex-col overflow-hidden'>
                   {vessel && (
@@ -185,11 +160,9 @@ export function MissionDrawer({
                         }))
                       }
                       isOpen={open}
-                      onSelectionChange={onSelectionChange}
-                      selectionLocked={lockedVesselId === vessel.id}
                       step={steps[vessel.id] ?? 'type'}
                       onStepChange={step => {
-                        if (step !== 'type') setLockedVesselId(vessel.id);
+                        if (step !== 'type') interactions.dispatch({ type: 'lock-planning', vesselId: vessel.id });
                         setSteps(current => ({
                           ...current,
                           [vessel.id]: step,
@@ -198,7 +171,7 @@ export function MissionDrawer({
                       registerCloseGuard={registerCloseGuard}
                       onDeploy={draft => {
                         if (!vessel.simulation.deploy(draft)) return false;
-                        setLockedVesselId(null);
+                        interactions.dispatch({ type: 'mission-deployed', vesselId: vessel.id });
                         // Deployment replaces the planner and its focused button.
                         requestAnimationFrame(() => {
                           map
@@ -243,7 +216,7 @@ export function MissionDrawer({
                                     .getContainer()
                                     .querySelector('.mission-drawer-popup')
                                     ?.getBoundingClientRect().width ?? 384) +
-                                    80,
+                                    122,
                                   map.getContainer().clientWidth - 100,
                                 ),
                               },
@@ -258,7 +231,7 @@ export function MissionDrawer({
                         return true;
                       }}
                       onCancel={() => {
-                        setLockedVesselId(null);
+
                         closeGuard.current = null;
                         setSteps(current => ({
                           ...current,

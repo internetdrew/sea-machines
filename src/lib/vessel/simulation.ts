@@ -1,4 +1,5 @@
 import { createActivityStore } from './activity.ts';
+import type { InitialActivity } from './activity';
 import {
   bearingBetween,
   destinationFrom,
@@ -64,12 +65,13 @@ export function createVesselSimulation(
   propulsion: PropulsionProfile = DEMO_PROPULSION,
   initialPosition: Coordinate = INITIAL_CENTER,
   initialHeading = INITIAL_HEADING,
+  initialActivity: readonly InitialActivity[] = [],
 ) {
   let position: Coordinate = [...initialPosition];
   let heading = initialHeading;
   let mission: DeployedMission | null = null;
-  let missionId = 0;
-  const activity = createActivityStore();
+  let missionId = initialActivity.reduce((latest, entry) => Math.max(latest, entry.missionId), 0);
+  const activity = createActivityStore(500, initialActivity);
   let legs: Leg[] = [];
   let targetIndex = 0;
   let legDistance = 0;

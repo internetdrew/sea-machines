@@ -15,10 +15,23 @@ export type VesselActivity = Readonly<{
   };
 }>;
 
+export type InitialActivity = Omit<VesselActivity, 'id'>;
+
 /** Session-only history. Recording is separate from the throttled telemetry feed. */
-export function createActivityStore(limit = 500) {
-  let entries: readonly VesselActivity[] = [];
-  let sequence = 0;
+export function createActivityStore(
+  limit = 500,
+  initial: readonly InitialActivity[] = [],
+) {
+  // Seeds arrive oldest first; give live events the next ID and keep newest first.
+  let sequence = initial.length;
+  let entries: readonly VesselActivity[] = initial
+    .map((entry, index) => ({
+      ...entry,
+      position: [...entry.position] as Coordinate,
+      id: index + 1,
+    }))
+    .reverse()
+    .slice(0, limit);
   const listeners = new Set<() => void>();
   return {
     getSnapshot: () => entries,

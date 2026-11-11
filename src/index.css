@@ -129,22 +129,22 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --background: var(--color-neutral-900);
+  --foreground: var(--color-neutral-100);
+  --card: var(--color-neutral-900);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: var(--color-neutral-900);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: var(--color-neutral-100);
+  --primary-foreground: var(--color-neutral-950);
   --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: var(--color-neutral-300);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted-foreground: var(--color-neutral-400);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: var(--color-neutral-800);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -211,7 +211,9 @@
   --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
   color-scheme: dark;
   transform: translateX(var(--drawer-swipe-movement-x, 0px));
-  transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1), height var(--resize-dur) var(--resize-ease);
+  /* Motion spring({ keyframes: [0, 1], visualDuration: 0.26, bounce: 0.12 }).
+     Visually arrives in 260ms; the remaining time is the subtle spring settle. */
+  transition: transform 500ms linear(0, 0.1371, 0.3825, 0.6066, 0.7719, 0.8794, 0.9428, 0.977, 0.9937, 1.0006, 1.0028, 1.0028, 1.0022, 1.0015, 1.0009, 1.0005, 1), height var(--resize-dur) var(--resize-ease);
   touch-action: pan-y;
 }
 
@@ -220,8 +222,13 @@
   transform: translateX(calc(100% + 2px));
 }
 
+.mission-drawer-popup[data-ending-style] {
+  transition-duration: 220ms, var(--resize-dur);
+  transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1), var(--resize-ease);
+}
+
 .mission-drawer-popup[data-ending-style][data-swipe-dismiss] {
-  transition-duration: calc(var(--drawer-swipe-strength, 1) * 350ms);
+  transition-duration: calc(var(--drawer-swipe-strength, 1) * 220ms), var(--resize-dur);
 }
 
 .mission-drawer-popup[data-swiping] {
@@ -253,10 +260,10 @@
   top: 0;
   left: 0;
   padding: 5px 8px;
-  border: 1px solid rgb(145 164 177 / 28%);
+  border: 1px solid var(--color-neutral-800);
   border-radius: 5px;
-  background: #11191ff2;
-  color: #f4f6f8;
+  background: var(--color-neutral-900);
+  color: var(--color-neutral-100);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   font-weight: 500;
@@ -271,14 +278,14 @@
   height: 100%;
   overflow: visible;
   fill: none;
-  stroke: rgb(169 187 198 / 65%);
+  stroke: rgb(163 163 163 / 65%);
   stroke-width: 1;
 }
 
 .vessel-identity-series {
   display: block;
   margin-top: 1px;
-  color: #9ba8b0;
+  color: var(--color-neutral-400);
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 400;
@@ -344,12 +351,12 @@
   }
 }
 
-/* Charcoal navigation surfaces, matching the reference card. */
+/* Neutral navigation surfaces, matching the mission panels. */
 .maplibregl-ctrl-attrib {
-  --background: #1d2123;
+  --background: #171717;
   --foreground: #f5f5f5;
-  --muted-foreground: #b5b5b5;
-  --border: #ffffff1a;
+  --muted-foreground: #a3a3a3;
+  --border: #262626;
 }
 .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
   filter: none;
@@ -459,7 +466,7 @@
 }
 
 .vessel-identity[data-unavailable='true'] .vessel-identity-series {
-  color: #c4ced4;
+  color: var(--color-neutral-300);
 }
 
 /* Continuous mission-speed controls: muted travel, a single small throttle. */

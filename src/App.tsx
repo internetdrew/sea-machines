@@ -1,3 +1,4 @@
+import { FleetInteractionProvider, FleetSelectionStatus } from '@/components/vessel/FleetInteractions';
 import { ActivityDrawer } from '@/components/vessel/ActivityDrawer';
 import type { ActivityPayload } from '@/components/vessel/ActivityDrawer';
 import { NavigationTooltipProvider } from '@/components/NavigationTooltip';
@@ -27,32 +28,13 @@ function App() {
     Drawer.createHandle<MissionDrawerPayload>(),
   );
   const [activityDrawer] = useState(() => Drawer.createHandle<ActivityPayload>());
-  const [activityVesselId, setActivityVesselId] = useState<string | null>(null);
+  const [follow, setFollow] = useState(false);
   const activityOpened = useCallback(() => {
     setFollow(false);
     if (window.matchMedia('(max-width: 639px)').matches) missionDrawer.close();
   }, [missionDrawer]);
-  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
-  const [drawerSelection, setDrawerSelection] = useState<{ id: string; planning: boolean; locked: boolean } | null>(null);
-  const selectVessel = useCallback((id: string, open: boolean) => {
-    setSelectedVesselId(current => open ? id : current === id ? null : current);
-  }, []);
-  const selectionWasLocked = useRef(false);
-  const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
-  const drawerChanged = useCallback((id: string | null, planning: boolean, locked: boolean) => {
-    if (locked !== selectionWasLocked.current) {
-      selectionWasLocked.current = locked;
-      setSelectionAnnouncement(locked
-        ? 'Vessel selection is locked until you cancel or deploy this mission.'
-        : 'Vessel selection is available again.');
-    }
-    setDrawerSelection(id ? { id, planning, locked } : null);
-    if (!id) setSelectedVesselId(null);
-  }, []);
-  const activeVesselId = activityVesselId ?? drawerSelection?.id ?? selectedVesselId;
   const [showRangeRings, setShowRangeRings] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
-  const [follow, setFollow] = useState(false);
   const stopFollowing = useCallback(() => setFollow(false), []);
   const fitFleet = useCallback(() => {
     const bounds = getFleetBounds(vessels.map(vessel => vessel.simulation.getFrame().position));
@@ -67,8 +49,9 @@ function App() {
     });
   }, [vessels, stopFollowing]);
   return (
+    <FleetInteractionProvider>
     <main className='relative h-dvh w-full [--map-edge-inset:1rem]' aria-label='Interactive map'>
-      <p id='vessel-selection-status' role='status' aria-live='polite' aria-atomic='true' className='sr-only'>{selectionAnnouncement}</p>
+      <FleetSelectionStatus />
       <Map
         ref={mapRef}
         center={INITIAL_CENTER}
@@ -81,20 +64,15 @@ function App() {
         {vessels.map((vessel, index) => <VesselLayer
           key={vessel.id}
           vessel={vessel}
-          selected={activeVesselId === vessel.id}
-          planning={drawerSelection?.planning ?? false}
-          missionDrawerOpen={drawerSelection?.id === vessel.id}
-          selectionDisabled={drawerSelection?.locked ?? false}
-          onSelectionChange={selectVessel}
           missionDrawer={missionDrawer}
           activityDrawer={activityDrawer}
           follow={index === 0 && follow}
-          showRangeRings={showRangeRings && !drawerSelection?.planning}
+          showRangeRings={showRangeRings}
           onPan={stopFollowing}
         />)}
-        <FleetLabels vessels={vessels} lockedVesselId={drawerSelection?.locked ? drawerSelection.id : null} planningVesselId={drawerSelection?.planning ? drawerSelection.id : null} />
+        <FleetLabels vessels={vessels} />
         <NavigationTooltipProvider delay={350}>
-        <div className='map-toolbar text-neutral-100 [--background:#1d2123] [--foreground:#f5f5f5] [--accent:#2b3033] [--border:#ffffff1a] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
+        <div className='map-toolbar text-neutral-100 [--background:#171717] [--foreground:#f5f5f5] [--accent:#262626] [--border:#262626] [--ring:#d4d4d4] absolute top-(--map-edge-inset) right-4 z-10 flex flex-col items-end gap-1.5'>
           <MapControls className='static' showZoom showCompass showFullscreen onFitFleet={fitFleet} />
           <MapSettings
             showSeamarks={showSeamarks}
@@ -104,10 +82,11 @@ function App() {
           />
         </div>
         </NavigationTooltipProvider>
-        <ActivityDrawer handle={activityDrawer} vessels={vessels} onSelection={setActivityVesselId} onOpen={activityOpened} />
-        <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} onSelectionChange={drawerChanged} />
+        <ActivityDrawer handle={activityDrawer} vessels={vessels} onOpen={activityOpened} />
+        <MissionDrawer handle={missionDrawer} vessels={vessels} onDeploy={stopFollowing} />
       </Map>
     </main>
+    </FleetInteractionProvider>
   );
 }
 

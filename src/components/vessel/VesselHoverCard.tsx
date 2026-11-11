@@ -87,25 +87,26 @@ export function VesselHoverCard({
     <>
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0'>
-          <p className='font-semibold tracking-tight'>{vessel.id}</p>
+          <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+            <p className='font-semibold tracking-tight'>{vessel.id}</p>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[5px] border px-1.5 py-0.5 text-[10px] leading-[14px] font-medium ${active ? (snapshot.playing ? 'border-teal-300/15 bg-teal-300/5 text-teal-300' : 'border-amber-400/15 bg-amber-400/5 text-amber-400') : 'border-white/10 bg-white/[0.03] text-neutral-400'}`}
+            >
+              <span aria-hidden='true' className='size-[5px] shrink-0 rounded-full bg-current' />
+              {active
+                ? snapshot.playing
+                  ? snapshot.phase === 'transit'
+                    ? 'In transit'
+                    : 'Mission active'
+                  : 'Mission paused'
+                : 'Idle'}
+            </span>
+          </div>
           <p className='mt-0.5 text-xs font-normal text-neutral-400'>
             {getVesselDisplayName(vessel)}
           </p>
         </div>
-        <div className='flex items-center gap-3.5'>
-          <p
-            className={`shrink-0 text-xs font-medium ${active ? (snapshot.playing ? 'text-teal-300' : 'text-amber-400') : 'text-neutral-400'}`}
-          >
-            {active
-              ? snapshot.playing
-                ? snapshot.phase === 'transit'
-                  ? 'In transit'
-                  : 'Mission active'
-                : 'Mission paused'
-              : 'Idle'}
-          </p>
-          {headerAction}
-        </div>
+        {headerAction}
       </div>
       <dl className='mt-5 grid grid-cols-2 gap-x-4 text-xs tabular-nums'>
         <div className='min-w-0'>
