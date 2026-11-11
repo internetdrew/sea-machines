@@ -1,11 +1,13 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 import type { Marker } from 'maplibre-gl';
+import { Drawer } from '@base-ui/react/drawer';
 import { Popover } from '@base-ui/react/popover';
 import { MapMarker, MarkerContent } from '@/components/ui/map';
 import { useFleetInteraction, useFleetInteractions } from '@/lib/vessel/use-interactions';
 import { selectActiveVesselId, selectPlanningVesselId } from '@/lib/vessel/interactions';
 import { getVesselIdentity, isMissionInProgress } from '@/lib/vessel/vessel';
+import { getFuelAppearance } from '@/lib/vessel/fuel';
 import boat from '@/assets/boat.svg?raw';
 import selkie from '@/assets/patrol-boat.svg?raw';
 import { VesselActionsPopover } from './VesselActionsPopover';
@@ -16,7 +18,23 @@ type Props = Omit<VesselActionsProps, 'markerButton' | 'onOpenDrawer' | 'resolve
   missionMarker: RefObject<Marker | null>;
 };
 
+const mobileQuery = '(max-width: 639px)';
+const subscribeMobile = (notify: () => void) => {
+  const query = window.matchMedia(mobileQuery);
+  query.addEventListener('change', notify);
+  return () => query.removeEventListener('change', notify);
+};
+const getMobile = () => window.matchMedia(mobileQuery).matches;
+
+
 export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, missionMarker }: Props) {
+  const warningCount = vessel.fuelTanks.filter(tank => tank.capacityLiters > 0 && getFuelAppearance(Math.max(0, Math.min(100, tank.remainingLiters / tank.capacityLiters * 100))).label !== 'Normal').length;
+  const compactSnapPoint = `${104 + warningCount * 48}px`;
+  const vesselSnapPoints = [compactSnapPoint, '344px', 1];
+  const mobile = useSyncExternalStore(subscribeMobile, getMobile, () => false);
+  const [snapPoint, setSnapPoint] = useState<Drawer.Root.SnapPoint | null>('344px');
+  const Root = mobile ? Drawer.Root : Popover.Root;
+  const Trigger = mobile ? Drawer.Trigger : Popover.Trigger;
   const { simulation } = vessel;
   const [initialFrame] = useState(() => simulation.getFrame());
   const interactions = useFleetInteractions();
@@ -29,7 +47,16 @@ export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, mi
   const openingDrawer = useRef(false);
   const markerButton = useRef<HTMLButtonElement | null>(null);
   return (
-    <Popover.Root
+    <Root
+      {...(mobile ? {
+        modal: false,
+        disablePointerDismissal: true,
+        snapPoints: vesselSnapPoints,
+        snapToSequentialPoints: true,
+        snapPoint,
+        onSnapPointChange: setSnapPoint,
+        onOpenChangeComplete: (open: boolean) => { if (!open) setSnapPoint('344px'); },
+      } : {})}
       open={popoverOpen && !selectionDisabled}
       onOpenChange={open => {
         if (open && selectionDisabled) return;
@@ -79,7 +106,7 @@ export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, mi
         subpixelPositioning
       >
         <MarkerContent>
-          <Popover.Trigger
+          <Trigger
             ref={markerButton}
             disabled={selectionDisabled}
             aria-describedby={selectionDisabled ? 'vessel-selection-status' : undefined}
@@ -111,10 +138,10 @@ export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, mi
               }}
               className='h-24 w-auto drop-shadow-lg data-[unavailable=true]:opacity-[0.38] data-[unavailable=false]:data-[selected=false]:hover:[&>path]:stroke-neutral-100/80 data-[selected=true]:[&>path]:stroke-[#f5e835]'
             />
-          </Popover.Trigger>
+          </Trigger>
         </MarkerContent>
-        <VesselActionsPopover vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} markerButton={markerButton} onOpenDrawer={() => { openingDrawer.current = true; }} resolveFinalFocus={() => openingDrawer.current ? false : markerButton.current ?? false} />
+        <VesselActionsPopover compactSnapPoint={compactSnapPoint} mobile={mobile} snapPoint={snapPoint} onSnapPointChange={setSnapPoint} vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} markerButton={markerButton} onOpenDrawer={() => { openingDrawer.current = true; }} resolveFinalFocus={() => openingDrawer.current || (interactions.getSnapshot().popoverVesselId !== null && interactions.getSnapshot().popoverVesselId !== vessel.id) ? false : markerButton.current ?? false} />
       </MapMarker>
-    </Popover.Root>
+    </Root>
   );
 }

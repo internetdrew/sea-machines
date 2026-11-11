@@ -13,10 +13,12 @@ export function VesselHoverCard({
   vessel,
   snapshot,
   headerAction,
+  detailLevel = 'full',
 }: {
   vessel: Vessel;
   snapshot: VesselFrame;
   headerAction?: ReactNode;
+  detailLevel?: 'compact' | 'summary' | 'full';
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>(
     'idle',
@@ -108,7 +110,7 @@ export function VesselHoverCard({
         </div>
         {headerAction}
       </div>
-      <dl className='mt-5 grid grid-cols-2 gap-x-4 text-xs tabular-nums'>
+      <dl hidden={detailLevel === 'compact'} className={`vessel-summary-telemetry grid grid-cols-2 gap-x-4 text-xs tabular-nums ${detailLevel === 'summary' ? 'mt-3.5' : 'mt-5'}`}>
         <div className='min-w-0'>
           <dt className='text-neutral-400'>Speed</dt>
           <dd className='mt-1 font-medium text-neutral-100'>
@@ -122,7 +124,7 @@ export function VesselHoverCard({
           </dd>
         </div>
       </dl>
-      <div className='relative mt-5'>
+      <div hidden={detailLevel !== 'full'} className='relative mt-5'>
         <button
           type='button'
           onClick={copyPosition}
@@ -181,7 +183,7 @@ export function VesselHoverCard({
           )}
         </button>
       </div>
-      {active && (
+      {active && detailLevel === 'full' && (
         <section aria-label='Mission' className='mt-5 text-xs'>
           <dl className='space-y-1'>
             <div className='flex items-baseline justify-between gap-3'>
@@ -202,7 +204,7 @@ export function VesselHoverCard({
           </dl>
         </section>
       )}
-      <section aria-label='Fuel' className='mt-5'>
+      <section hidden={detailLevel !== 'full'} aria-label='Fuel' className='mt-5'>
         <h3 className='text-xs font-medium text-neutral-400'>Fuel</h3>
         <dl className='mt-2 space-y-2 text-xs tabular-nums'>
           {tanks.map(tank => (
@@ -232,19 +234,20 @@ export function VesselHoverCard({
         </dl>
       </section>
       {tanks.some(tank => tank.warning) && (
-        <div className='mt-4'>
+        <div className={detailLevel === 'compact' ? 'mt-3 space-y-2' : detailLevel === 'summary' ? 'mt-3.5 space-y-2' : 'mt-4'}>
           {tanks
             .filter(tank => tank.warning)
             .map(tank => (
               <p
                 key={tank.name}
-                className={`flex items-center gap-2 text-xs ${tank.color}`}
+                className={`flex items-center gap-2 text-xs ${tank.color} ${detailLevel !== 'full' ? `min-h-10 rounded-lg border px-3 py-2 ${detailLevel === 'summary' ? 'border-amber-400/[0.07] bg-amber-400/[0.025]' : 'border-amber-400/10 bg-amber-400/[0.03]'}` : ''}`}
               >
                 <TriangleAlert
                   aria-hidden='true'
                   className='size-3.5 shrink-0'
                 />
-                <span>{tank.name} fuel low</span>
+                <span className='min-w-0 flex-1'>{tank.name} fuel low</span>
+                {detailLevel !== 'full' && <span className='shrink-0 font-semibold tabular-nums'>{tank.percent}%</span>}
               </p>
             ))}
         </div>
