@@ -2,7 +2,8 @@ import { missionProgressPercent } from '@/lib/vessel/mission';
 import { getVesselDisplayName } from '@/lib/vessel/vessel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Copy, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
+import { SmoothResize } from '@/components/SmoothResize';
 import { TextSwap } from '@/components/TextSwap';
 import { distanceNm } from '@/lib/vessel/mission';
 import { getFuelAppearance } from '@/lib/vessel/fuel';
@@ -124,42 +125,17 @@ export function VesselHoverCard({
           </dd>
         </div>
       </dl>
-      <div hidden={detailLevel !== 'full'} className='relative mt-5'>
-        <button
-          type='button'
-          onClick={copyPosition}
-          aria-label='Copy vessel position, latitude and longitude'
-          className='vessel-position-copy group relative isolate block w-full cursor-pointer rounded text-left before:pointer-events-none before:absolute before:-inset-1.5 before:-z-10 before:rounded-md before:content-[""] focus-visible:outline-2 focus-visible:outline-offset-6 focus-visible:outline-neutral-100'
-        >
-          <span
-            className={`flex h-4 items-center justify-between text-xs font-medium ${copyState === 'copied' ? 'text-[#86efac]' : 'text-neutral-400'}`}
-          >
-            <TextSwap
-              text={copyState === 'copied' ? 'Position Copied' : 'Position'}
-              duration={0.09}
-              offset={2}
-              blur={1}
-            />
-            <span
-              aria-hidden='true'
-              data-copied={copyState === 'copied'}
-              className='vessel-position-copy-icon vessel-copy-icon-swap inline-grid size-3.5'
-            >
-              <span className='vessel-copy-glyph' data-icon='copy'>
-                <Copy className='size-3.5' />
-              </span>
-              <span className='vessel-copy-glyph' data-icon='check'>
-                <Check className='size-3.5' />
-              </span>
-            </span>
-          </span>
-          <span role='status' className='sr-only'>
-            {copyState === 'copied'
-              ? 'Vessel position copied'
-              : copyState === 'error'
-                ? 'Unable to copy vessel position'
-                : ''}
-          </span>
+      <section hidden={detailLevel !== 'full'} className='vessel-position-section relative mt-5'>
+        <div className='flex items-center justify-between gap-3'>
+          <h3 className='text-xs font-medium text-neutral-400'>Position</h3>
+          <button type='button' onClick={copyPosition} aria-label='Copy vessel position, latitude and longitude' className='min-h-8 min-w-11 cursor-pointer rounded-md border border-neutral-800 px-2 text-xs text-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'>
+            <SmoothResize>
+              <TextSwap text={copyState === 'copied' ? 'Copied' : 'Copy'} duration={0.09} offset={2} blur={1} />
+            </SmoothResize>
+          </button>
+        </div>
+        <span role='status' className='sr-only'>{copyState === 'copied' ? 'Vessel position copied' : copyState === 'error' ? 'Unable to copy vessel position. Select the coordinates to copy manually.' : ''}</span>
+        <div className='select-text'>
           <span className='mt-2 grid grid-cols-2 gap-x-3 text-xs tabular-nums'>
             <span className='min-w-0'>
               <span className='block text-neutral-400'>Latitude</span>
@@ -176,13 +152,9 @@ export function VesselHoverCard({
               </span>
             </span>
           </span>
-          {copyState === 'error' && (
-            <span className='mt-2 block text-[11px] text-amber-400'>
-              Unable to copy. Try again.
-            </span>
-          )}
-        </button>
-      </div>
+        </div>
+        {copyState === 'error' && <p className='mt-2 text-[11px] text-amber-400'>Copy unavailable. Select the coordinates to copy manually.</p>}
+      </section>
       {active && detailLevel === 'full' && (
         <section aria-label='Mission' className='mt-5 text-xs'>
           <dl className='space-y-1'>
@@ -204,15 +176,15 @@ export function VesselHoverCard({
           </dl>
         </section>
       )}
-      <section hidden={detailLevel !== 'full'} aria-label='Fuel' className='mt-5'>
+      <section hidden={detailLevel !== 'full'} aria-label='Fuel' className='vessel-fuel-section mt-5'>
         <h3 className='text-xs font-medium text-neutral-400'>Fuel</h3>
         <dl className='mt-2 space-y-2 text-xs tabular-nums'>
           {tanks.map(tank => (
             <div
               key={tank.name}
-              className='grid grid-cols-[5rem_minmax(0,1fr)_2.25rem] items-center gap-3'
+              className='grid grid-cols-[6.5rem_minmax(0,1fr)_2.25rem] items-center gap-3'
             >
-              <dt className='text-neutral-400'>{tank.name}</dt>
+              <dt className='flex items-center gap-1.5 text-neutral-400'>{tank.name}{tank.warning && <span className='rounded border border-amber-400/15 bg-amber-400/[0.03] px-1 py-0.5 text-[9px] leading-3 text-amber-400'>Low</span>}</dt>
               <dd className='col-span-2 grid grid-cols-subgrid items-center'>
                 <span
                   aria-hidden='true'
@@ -233,21 +205,21 @@ export function VesselHoverCard({
           ))}
         </dl>
       </section>
-      {tanks.some(tank => tank.warning) && (
+      {detailLevel !== 'full' && tanks.some(tank => tank.warning) && (
         <div className={detailLevel === 'compact' ? 'mt-3 space-y-2' : detailLevel === 'summary' ? 'mt-3.5 space-y-2' : 'mt-4'}>
           {tanks
             .filter(tank => tank.warning)
             .map(tank => (
               <p
                 key={tank.name}
-                className={`flex items-center gap-2 text-xs ${tank.color} ${detailLevel !== 'full' ? `min-h-10 rounded-lg border px-3 py-2 ${detailLevel === 'summary' ? 'border-amber-400/[0.07] bg-amber-400/[0.025]' : 'border-amber-400/10 bg-amber-400/[0.03]'}` : ''}`}
+                className={`flex items-center gap-2 text-xs ${tank.color} min-h-10 rounded-lg border px-3 py-2 ${detailLevel === 'summary' ? 'border-amber-400/[0.07] bg-amber-400/[0.025]' : 'border-amber-400/10 bg-amber-400/[0.03]'}`}
               >
                 <TriangleAlert
                   aria-hidden='true'
                   className='size-3.5 shrink-0'
                 />
                 <span className='min-w-0 flex-1'>{tank.name} fuel low</span>
-                {detailLevel !== 'full' && <span className='shrink-0 font-semibold tabular-nums'>{tank.percent}%</span>}
+                <span className='shrink-0 font-semibold tabular-nums'>{tank.percent}%</span>
               </p>
             ))}
         </div>

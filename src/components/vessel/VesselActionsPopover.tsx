@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import type { RefObject } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useIsPresent,
+  useReducedMotion,
+} from 'motion/react';
+import type { ReactNode, RefObject } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { Drawer } from '@base-ui/react/drawer';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -21,6 +27,45 @@ export type VesselActionsProps = {
   resolveFinalFocus: () => HTMLButtonElement | false;
 };
 
+const CTA_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const };
+
+function ActivityAction({
+  children,
+  reducedMotion,
+  horizontal,
+}: {
+  children: ReactNode;
+  reducedMotion: boolean;
+  horizontal: boolean;
+}) {
+  const present = useIsPresent();
+  return (
+    <motion.div
+      className={
+        horizontal
+          ? 'w-[46.5%] min-w-0 shrink-0 overflow-hidden'
+          : 'overflow-hidden'
+      }
+      inert={!present}
+      aria-hidden={!present || undefined}
+      initial={reducedMotion || horizontal ? false : { height: 0, opacity: 0 }}
+      animate={horizontal ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
+      exit={horizontal ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      transition={reducedMotion ? { duration: 0 } : CTA_TRANSITION}
+    >
+      <motion.div
+        className={horizontal ? 'pl-2' : 'pt-2'}
+        initial={reducedMotion || horizontal ? false : { y: 4 }}
+        animate={{ y: 0 }}
+        exit={{ y: horizontal ? 0 : 4 }}
+        transition={reducedMotion ? { duration: 0 } : CTA_TRANSITION}
+      >
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function VesselActionsPopover({
   compactSnapPoint = '104px',
   mobile = false,
@@ -38,6 +83,8 @@ export function VesselActionsPopover({
   snapPoint?: Drawer.Root.SnapPoint | null;
   onSnapPointChange?: (point: Drawer.Root.SnapPoint) => void;
 }) {
+  const reducedMotion = useReducedMotion();
+  const showActivity = !mobile || snapPoint !== compactSnapPoint;
   const { simulation } = vessel;
   const snapshot = useSyncExternalStore(
     simulation.subscribe,
@@ -74,7 +121,9 @@ export function VesselActionsPopover({
     />
   );
   const actions = (
-    <footer className='vessel-actions-footer mt-4.5 flex flex-col gap-2 border-t border-white/5 pt-3.5'>
+    <footer
+      className={`vessel-actions-footer mt-4.5 flex border-t border-white/5 pt-3.5 ${mobile ? 'flex-row items-start' : 'flex-col'}`}
+    >
       {/* Keep the trigger registered while Base UI captures its payload. */}
       <Drawer.Trigger
         hidden={missionDrawerOpen}
@@ -89,20 +138,29 @@ export function VesselActionsPopover({
             simulation.clearFinishedMission();
           onOpenDrawer();
         }}
-        className={`flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${planning ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-950 hover:bg-white'}`}
+        className={`flex min-h-11 w-full ${mobile ? 'min-w-0 flex-1' : ''} cursor-pointer items-center justify-center rounded-md px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${planning ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-950 hover:bg-white'}`}
       >
         {isMissionInProgress(snapshot) ? 'View mission' : 'Plan a mission'}
       </Drawer.Trigger>
-      <Drawer.Trigger
-        hidden={mobile && snapPoint !== 1}
-        data-vessel-id={vessel.id}
-        handle={activityDrawer}
-        payload={{ vesselId: vessel.id, returnFocus: markerButton }}
-        onClick={onOpenDrawer}
-        className='mission-cta flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-800 px-3 py-2 text-xs font-medium text-neutral-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
-      >
-        View activity
-      </Drawer.Trigger>
+      <AnimatePresence initial={false}>
+        {showActivity && (
+          <ActivityAction
+            key='activity'
+            reducedMotion={!!reducedMotion}
+            horizontal={mobile}
+          >
+            <Drawer.Trigger
+              data-vessel-id={vessel.id}
+              handle={activityDrawer}
+              payload={{ vesselId: vessel.id, returnFocus: markerButton }}
+              onClick={onOpenDrawer}
+              className='mission-cta flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md bg-neutral-800 px-3 py-2 text-xs font-medium text-neutral-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+            >
+              View activity
+            </Drawer.Trigger>
+          </ActivityAction>
+        )}
+      </AnimatePresence>
     </footer>
   );
   if (mobile)
@@ -124,7 +182,9 @@ export function VesselActionsPopover({
               <button
                 type='button'
                 aria-label={
-                  snapPoint === compactSnapPoint ? 'Expand vessel details' : 'Collapse vessel details'
+                  snapPoint === compactSnapPoint
+                    ? 'Expand vessel details'
+                    : 'Collapse vessel details'
                 }
                 onClick={() =>
                   onSnapPointChange?.(
@@ -149,24 +209,66 @@ export function VesselActionsPopover({
                 Vessel status and actions. Expand for position and fuel details.
               </Drawer.Description>
             </div>
-            <Drawer.Content className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 touch-auto'>
-              {card}
+            <Drawer.Content className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 touch-auto'>
+              <div className='pb-4'>{card}</div>
             </Drawer.Content>
-            {snapPoint !== compactSnapPoint && (
-              <div className='shrink-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+            {
+              <div
+                inert={snapPoint === compactSnapPoint}
+                aria-hidden={snapPoint === compactSnapPoint || undefined}
+                className='vessel-actions-dock px-5 pt-3 pb-4'
+              >
                 {actions}
                 <button
                   type='button'
                   data-base-ui-swipe-ignore
-                  onClick={() => onSnapPointChange?.(snapPoint === 1 ? '344px' : 1)}
-                  className='mt-1 flex min-h-11 w-full items-center justify-center gap-1 text-xs text-neutral-400 focus-visible:outline-2 focus-visible:outline-white'
+                  onClick={() =>
+                    onSnapPointChange?.(snapPoint === 1 ? '344px' : 1)
+                  }
+                  className='flex min-h-11 w-full items-center justify-center gap-1 text-xs text-neutral-400 focus-visible:outline-2 focus-visible:outline-white'
                 >
-                  {snapPoint === 1 ? 'Show less' : 'Full vessel details'}
-                  {snapPoint === 1 ? <ChevronDown className='size-4' /> : <ChevronUp className='size-4' />}
+                  <span className='relative inline-grid'>
+                    <span
+                      aria-hidden='true'
+                      className='invisible col-start-1 row-start-1 whitespace-nowrap'
+                    >
+                      Full vessel details
+                    </span>
+                    <span className='sr-only'>
+                      {snapPoint === 1 ? 'Show less' : 'Full vessel details'}
+                    </span>
+                    <AnimatePresence initial={false} mode='popLayout'>
+                      <motion.span
+                        key={snapPoint === 1 ? 'less' : 'details'}
+                        aria-hidden='true'
+                        className='absolute inset-0 text-center whitespace-nowrap'
+                        initial={
+                          reducedMotion
+                            ? false
+                            : { opacity: 0, filter: 'blur(1px)' }
+                        }
+                        animate={{ opacity: 1, filter: 'blur(0px)' }}
+                        exit={{
+                          opacity: 0,
+                          filter: reducedMotion ? 'blur(0px)' : 'blur(1px)',
+                        }}
+                        transition={{
+                          duration: reducedMotion ? 0 : 0.14,
+                          ease: 'easeOut',
+                        }}
+                      >
+                        {snapPoint === 1 ? 'Show less' : 'Full vessel details'}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
+                  {snapPoint === 1 ? (
+                    <ChevronDown className='size-4' />
+                  ) : (
+                    <ChevronUp className='size-4' />
+                  )}
                 </button>
-
               </div>
-            )}
+            }
           </Drawer.Popup>
         </Drawer.Viewport>
       </Drawer.Portal>
