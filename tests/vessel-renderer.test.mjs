@@ -70,9 +70,8 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   const simulation = createVesselSimulation({ now: () => now, request: callback => { scheduled.set(++next, callback); return next; }, cancel: id => scheduled.delete(id) });
   let pans = 0;
   const vesselMarker = new Marker({ element: new Element('mapcn-marker') });
-  const tooltip = { open: true, position: null, isOpen() { return this.open; }, setLngLat(position) { this.position = position; } };
   const renderer = exports.createVesselRenderer(map, { Marker }, simulation,
-    { marker: vesselMarker, tooltip },
+    { marker: vesselMarker },
     { follow: true, showRangeRings: true }, () => pans++);
   assert.equal([...layers.values()].some(layer => layer.id.endsWith('-route')), false, 'no default waypoint route');
   const tail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
@@ -108,7 +107,6 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   step();
   assert.equal(simulation.getSnapshot(), oldUI, 'UI did not tick');
   assert.equal(markers[0].position, simulation.getFrame().position);
-  assert.equal(tooltip.position, simulation.getFrame().position, 'open mapcn tooltip follows the live marker');
   assert.equal(markers[1].position, simulation.getFrame().position);
   assert.equal(camera, simulation.getFrame().position);
   assert.deepEqual(live.data.features[0].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');
@@ -171,7 +169,7 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   simulation.setPlaying(true);
   step();
   const replacement = exports.createVesselRenderer(map, { Marker }, simulation,
-    { marker: vesselMarker, tooltip }, { follow: false, showRangeRings: true }, () => pans++);
+    { marker: vesselMarker }, { follow: false, showRangeRings: true }, () => pans++);
   assert.equal(layers.size, 5, 'trail and remaining-route layers recreated after a style swap');
   const replacementTail = [...layers.values()].find(layer => layer.id.endsWith('-tail'));
   const replacementLive = sources.get(replacementTail.source);

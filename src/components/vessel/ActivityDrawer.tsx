@@ -30,13 +30,13 @@ function Filter({ value, onChange, label, items }: { value: string; onChange: (v
 }
 
 const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-function ActivityEntry({ event, showVessel }: { event: Entry; showVessel: boolean }) {
+function ActivityEntry({ event }: { event: Entry }) {
   const tone = event.title === 'Mission aborted' ? 'text-[#eab3af]' : 'text-neutral-100';
   const [open, setOpen] = useState(false);
   const lat = event.position[1], lon = event.position[0];
   return <Collapsible.Root open={open} onOpenChange={setOpen} className={`mb-2 overflow-hidden rounded-lg ${open ? 'bg-white/5' : ''}`}>
     <Collapsible.Trigger className='flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-left hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring' title={`${event.vesselId} · ${event.title}`}>
-      {showVessel && <span className='shrink-0 rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-neutral-300'>{event.vesselId}</span>}
+      <span className='shrink-0 rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-neutral-300'>{event.vesselId}</span>
       <span className={`min-w-0 flex-1 truncate text-xs font-medium ${tone}`}>{event.title}</span>
       <time dateTime={new Date(event.timestamp).toISOString()} className='shrink-0 font-mono text-[10px] text-neutral-400'>{time.format(event.timestamp)}</time>
       <IconSwap swapped={open} iconA={<ChevronDown className='size-3.5' />} iconB={<ChevronUp className='size-3.5' />} className='size-3.5 shrink-0 text-neutral-400' />
@@ -101,7 +101,7 @@ function ActivityBody({ vessels, initialVesselId, open }: { vessels: readonly Ve
     </div>
     <p className='shrink-0 px-5 pb-3 text-[10px] text-neutral-400'>Local time · newest first</p>
     <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3'>
-      {visible.length ? visible.map(event => <ActivityEntry key={`${event.vesselId}:${event.id}`} event={event} showVessel={true} />) : <p className='px-2 py-8 text-xs leading-relaxed text-muted-foreground'>No activity {filter === 'all' ? 'yet' : `for ${filter} yet`}. Deployed missions and accepted changes will appear here.</p>}
+      {visible.length ? visible.map(event => <ActivityEntry key={`${event.vesselId}:${event.id}`} event={event} />) : <p className='px-2 py-8 text-xs leading-relaxed text-muted-foreground'>No activity {filter === 'all' ? 'yet' : `for ${filter} yet`}. Deployed missions and accepted changes will appear here.</p>}
     </div>
   </>;
 }
