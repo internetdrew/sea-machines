@@ -1,51 +1,58 @@
 import { missionProgressPercent } from '@/lib/vessel/mission';
 import { getVesselDisplayName } from '@/lib/vessel/vessel';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Copy, TriangleAlert } from 'lucide-react';
-import { TextSwap } from '@/components/TextSwap';
+import { TriangleAlert } from 'lucide-react';
+import { VesselPosition, VesselPositionContent } from './VesselPosition';
 import { distanceNm } from '@/lib/vessel/mission';
 import { getFuelAppearance } from '@/lib/vessel/fuel';
 import type { VesselFrame } from '@/lib/vessel/simulation';
 import { isMissionInProgress, type Vessel } from '@/lib/vessel/vessel';
 
-export function VesselHoverCard({
-  vessel,
-  snapshot,
-  headerAction,
-}: {
+type Props = {
   vessel: Vessel;
   snapshot: VesselFrame;
   headerAction?: ReactNode;
-}) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>(
-    'idle',
+  showHeader?: boolean;
+  detailLevel?: 'compact' | 'summary' | 'full';
+};
+
+export function VesselHoverCard(props: Props) {
+  return <VesselCardContent {...props} position={<VesselPosition snapshot={props.snapshot} />} />;
+}
+
+
+export function VesselCardHeader({ vessel, snapshot, headerAction }: Pick<Props, 'vessel' | 'snapshot' | 'headerAction'>) {
+  const active = isMissionInProgress(snapshot);
+  return (
+      <div className='flex items-start justify-between gap-3'>
+        <div className='min-w-0'>
+          <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+            <p className='font-semibold tracking-tight'>{vessel.id}</p>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[5px] border px-1.5 py-0.5 text-[10px] leading-[14px] font-medium ${active ? (snapshot.playing ? 'border-teal-300/15 bg-teal-300/5 text-teal-300' : 'border-amber-400/15 bg-amber-400/5 text-amber-400') : 'border-white/10 bg-white/[0.03] text-neutral-400'}`}
+            >
+              <span aria-hidden='true' className='size-[5px] shrink-0 rounded-full bg-current' />
+              {active
+                ? snapshot.playing
+                  ? snapshot.phase === 'transit'
+                    ? 'In transit'
+                    : 'Mission active'
+                  : 'Mission paused'
+                : 'Idle'}
+            </span>
+          </div>
+          <p className='mt-0.5 text-xs font-normal text-neutral-400'>
+            {getVesselDisplayName(vessel)}
+          </p>
+        </div>
+        {headerAction}
+      </div>
   );
-  const resetCopy = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      clearTimeout(resetCopy.current);
-    };
-  }, []);
-  const copyPosition = async () => {
-    clearTimeout(resetCopy.current);
-    const [longitude, latitude] = snapshot.position;
-    try {
-      await navigator.clipboard.writeText(
-        `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-      );
-      if (!mounted.current) return;
-      setCopyState('copied');
-      resetCopy.current = setTimeout(() => setCopyState('idle'), 2200);
-    } catch {
-      if (mounted.current) setCopyState('error');
-    }
-  };
+}
+
+/** Pure vessel presentation: probes never mount copy feedback or animation effects. */
+export function VesselCardContent({ vessel, snapshot, headerAction, detailLevel = 'full', position, showHeader = true }: Props & { position?: ReactNode; }) {
   const mission = snapshot.mission;
   const total = useMemo(
     () =>
@@ -85,30 +92,8 @@ export function VesselHoverCard({
 
   return (
     <>
-      <div className='flex items-start justify-between gap-3'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
-            <p className='font-semibold tracking-tight'>{vessel.id}</p>
-            <span
-              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[5px] border px-1.5 py-0.5 text-[10px] leading-[14px] font-medium ${active ? (snapshot.playing ? 'border-teal-300/15 bg-teal-300/5 text-teal-300' : 'border-amber-400/15 bg-amber-400/5 text-amber-400') : 'border-white/10 bg-white/[0.03] text-neutral-400'}`}
-            >
-              <span aria-hidden='true' className='size-[5px] shrink-0 rounded-full bg-current' />
-              {active
-                ? snapshot.playing
-                  ? snapshot.phase === 'transit'
-                    ? 'In transit'
-                    : 'Mission active'
-                  : 'Mission paused'
-                : 'Idle'}
-            </span>
-          </div>
-          <p className='mt-0.5 text-xs font-normal text-neutral-400'>
-            {getVesselDisplayName(vessel)}
-          </p>
-        </div>
-        {headerAction}
-      </div>
-      <dl className='mt-5 grid grid-cols-2 gap-x-4 text-xs tabular-nums'>
+      {showHeader && <VesselCardHeader vessel={vessel} snapshot={snapshot} headerAction={headerAction} />}
+      <dl hidden={detailLevel === 'compact'} className={`vessel-summary-telemetry grid grid-cols-2 gap-x-4 text-xs tabular-nums ${detailLevel === 'summary' ? 'mt-3.5' : 'mt-5'}`}>
         <div className='min-w-0'>
           <dt className='text-neutral-400'>Speed</dt>
           <dd className='mt-1 font-medium text-neutral-100'>
@@ -122,66 +107,10 @@ export function VesselHoverCard({
           </dd>
         </div>
       </dl>
-      <div className='relative mt-5'>
-        <button
-          type='button'
-          onClick={copyPosition}
-          aria-label='Copy vessel position, latitude and longitude'
-          className='vessel-position-copy group relative isolate block w-full cursor-pointer rounded text-left before:pointer-events-none before:absolute before:-inset-1.5 before:-z-10 before:rounded-md before:content-[""] focus-visible:outline-2 focus-visible:outline-offset-6 focus-visible:outline-neutral-100'
-        >
-          <span
-            className={`flex h-4 items-center justify-between text-xs font-medium ${copyState === 'copied' ? 'text-[#86efac]' : 'text-neutral-400'}`}
-          >
-            <TextSwap
-              text={copyState === 'copied' ? 'Position Copied' : 'Position'}
-              duration={0.09}
-              offset={2}
-              blur={1}
-            />
-            <span
-              aria-hidden='true'
-              data-copied={copyState === 'copied'}
-              className='vessel-position-copy-icon vessel-copy-icon-swap inline-grid size-3.5'
-            >
-              <span className='vessel-copy-glyph' data-icon='copy'>
-                <Copy className='size-3.5' />
-              </span>
-              <span className='vessel-copy-glyph' data-icon='check'>
-                <Check className='size-3.5' />
-              </span>
-            </span>
-          </span>
-          <span role='status' className='sr-only'>
-            {copyState === 'copied'
-              ? 'Vessel position copied'
-              : copyState === 'error'
-                ? 'Unable to copy vessel position'
-                : ''}
-          </span>
-          <span className='mt-2 grid grid-cols-2 gap-x-3 text-xs tabular-nums'>
-            <span className='min-w-0'>
-              <span className='block text-neutral-400'>Latitude</span>
-              <span className='mt-1 block whitespace-nowrap font-medium text-neutral-100'>
-                {Math.abs(snapshot.position[1]).toFixed(4)}°{' '}
-                {snapshot.position[1] >= 0 ? 'N' : 'S'}
-              </span>
-            </span>
-            <span className='min-w-0 text-right'>
-              <span className='block text-neutral-400'>Longitude</span>
-              <span className='mt-1 block whitespace-nowrap font-medium text-neutral-100'>
-                {Math.abs(snapshot.position[0]).toFixed(4)}°{' '}
-                {snapshot.position[0] >= 0 ? 'E' : 'W'}
-              </span>
-            </span>
-          </span>
-          {copyState === 'error' && (
-            <span className='mt-2 block text-[11px] text-amber-400'>
-              Unable to copy. Try again.
-            </span>
-          )}
-        </button>
+      <div hidden={detailLevel !== 'full'}>
+        {detailLevel === 'full' && (position ?? <VesselPositionContent snapshot={snapshot} />)}
       </div>
-      {active && (
+      {active && detailLevel === 'full' && (
         <section aria-label='Mission' className='mt-5 text-xs'>
           <dl className='space-y-1'>
             <div className='flex items-baseline justify-between gap-3'>
@@ -202,15 +131,15 @@ export function VesselHoverCard({
           </dl>
         </section>
       )}
-      <section aria-label='Fuel' className='mt-5'>
+      <section hidden={detailLevel !== 'full'} aria-label='Fuel' className='vessel-fuel-section mt-5'>
         <h3 className='text-xs font-medium text-neutral-400'>Fuel</h3>
         <dl className='mt-2 space-y-2 text-xs tabular-nums'>
           {tanks.map(tank => (
             <div
               key={tank.name}
-              className='grid grid-cols-[5rem_minmax(0,1fr)_2.25rem] items-center gap-3'
+              className='grid grid-cols-[6.5rem_minmax(0,1fr)_2.25rem] items-center gap-3'
             >
-              <dt className='text-neutral-400'>{tank.name}</dt>
+              <dt className='flex items-center gap-1.5 text-neutral-400'>{tank.name}{tank.warning && <span className='rounded border border-amber-400/15 bg-amber-400/[0.03] px-1 py-0.5 text-[9px] leading-3 text-amber-400'>Low</span>}</dt>
               <dd className='col-span-2 grid grid-cols-subgrid items-center'>
                 <span
                   aria-hidden='true'
@@ -231,20 +160,21 @@ export function VesselHoverCard({
           ))}
         </dl>
       </section>
-      {tanks.some(tank => tank.warning) && (
-        <div className='mt-4'>
+      {detailLevel !== 'full' && tanks.some(tank => tank.warning) && (
+        <div className={detailLevel === 'compact' ? 'mt-3 space-y-2' : detailLevel === 'summary' ? 'mt-3.5 space-y-2' : 'mt-4'}>
           {tanks
             .filter(tank => tank.warning)
             .map(tank => (
               <p
                 key={tank.name}
-                className={`flex items-center gap-2 text-xs ${tank.color}`}
+                className={`flex items-center gap-2 text-xs ${tank.color} min-h-10 rounded-lg border px-3 py-2 ${detailLevel === 'summary' ? 'border-amber-400/[0.07] bg-amber-400/[0.025]' : 'border-amber-400/10 bg-amber-400/[0.03]'}`}
               >
                 <TriangleAlert
                   aria-hidden='true'
                   className='size-3.5 shrink-0'
                 />
-                <span>{tank.name} fuel low</span>
+                <span className='min-w-0 flex-1'>{tank.name} fuel low</span>
+                <span className='shrink-0 font-semibold tabular-nums'>{tank.percent}%</span>
               </p>
             ))}
         </div>

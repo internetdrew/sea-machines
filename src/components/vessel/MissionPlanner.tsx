@@ -1,3 +1,4 @@
+import { TextSwap } from '@/components/TextSwap';
 import { WaypointCoordinateTooltip } from './WaypointCoordinateTooltip';
 import {
   CONFIRM_BACKDROP_CLASS,
@@ -5,7 +6,7 @@ import {
   CONFIRM_CANCEL_CLASS,
   CONFIRM_DESTRUCTIVE_CLASS,
 } from '@/components/ConfirmationStyles';
-import { MissionSpeedControl } from './MissionSpeedControl';
+import { MissionSpeedFields } from './MissionSpeedFields';
 import { NumberPopIn } from '@/components/NumberPopIn';
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { getVesselIdentity } from '@/lib/vessel/vessel';
@@ -48,7 +49,11 @@ import {
 } from '@/lib/vessel/mission';
 import type { MissionDraft } from '@/lib/vessel/mission';
 import type { Coordinate } from '@/lib/vessel/navigation';
-import { fitMissionRoute } from '@/lib/mission-camera';
+import {
+  fitMissionRoute,
+  missionMapPadding,
+  missionMapOffset,
+} from '@/lib/mission-camera';
 import type { Vessel } from '@/lib/vessel/vessel';
 import { MissionNumberField } from './MissionNumberField';
 import { GridMissionRoute } from './GridMissionRoute';
@@ -87,7 +92,9 @@ export function MissionPlanner({
   step,
   onStepChange: setStep,
   registerCloseGuard,
+  mobile = false,
 }: {
+  mobile?: boolean;
   vessel: Vessel;
   draft: MissionDraft;
   onDraftChange: (draft: MissionDraft) => void;
@@ -192,23 +199,13 @@ export function MissionPlanner({
             point[0] + ((longitude - point[0] + 540) % 360) - 180,
         );
         const latitudes = framingPoints.map(([, latitude]) => latitude);
-        const container = map.getContainer();
-        const drawerWidth =
-          container
-            .querySelector('.mission-drawer-popup')
-            ?.getBoundingClientRect().width ?? 384;
         map.fitBounds(
           [
             [Math.min(...longitudes), Math.min(...latitudes)],
             [Math.max(...longitudes), Math.max(...latitudes)],
           ],
           {
-            padding: {
-              top: 96,
-              bottom: 96,
-              left: 64,
-              right: Math.min(drawerWidth + 138, container.clientWidth - 100),
-            },
+            padding: missionMapPadding(map),
             maxZoom: 18,
             duration: 350,
             animate: !window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -242,15 +239,10 @@ export function MissionPlanner({
   );
   const frameVessel = (zoom: number) => {
     if (!map) return;
-    const container = map.getContainer();
-    const drawerWidth =
-      container.querySelector('.mission-drawer-popup')?.getBoundingClientRect()
-        .width ?? 384;
-    const occupied = Math.min(drawerWidth + 74, container.clientWidth - 80);
     map.easeTo({
       center: vessel.simulation.getFrame().position,
       zoom,
-      offset: [-occupied / 2, 0],
+      offset: missionMapOffset(map),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 0
         : 300,
@@ -356,7 +348,10 @@ export function MissionPlanner({
             }}
           >
             <MarkerContent>
-              <WaypointCoordinateTooltip coordinate={point} disabled={draggingWaypoint !== null}>
+              <WaypointCoordinateTooltip
+                coordinate={point}
+                disabled={draggingWaypoint !== null}
+              >
                 <motion.span
                   tabIndex={0}
                   aria-label={`Mission waypoint ${index + 1}`}
@@ -366,7 +361,11 @@ export function MissionPlanner({
                       : false
                   }
                   animate={{ scale: 1 }}
-                  transition={{ type: 'spring', visualDuration: 0.2, bounce: 0 }}
+                  transition={{
+                    type: 'spring',
+                    visualDuration: 0.2,
+                    bounce: 0,
+                  }}
                   onAnimationComplete={() =>
                     setNewWaypoint(current =>
                       current === point ? null : current,
@@ -398,7 +397,14 @@ export function MissionPlanner({
           </MapMarker>
         )}
 
-      <header className='shrink-0 px-5 pt-5 pb-3'>
+      <header className={`shrink-0 px-5 pt-5 ${mobile && step === 'speeds' ? 'pb-1' : 'pb-3'}`}>
+        {mobile && step === 'speeds' ? (
+          <div className='flex min-h-11 items-center gap-2 pr-11'>
+            <Drawer.Title className='text-base font-medium'>Set speeds</Drawer.Title>
+            <Drawer.Description className='text-xs text-neutral-400'>{vessel.id}</Drawer.Description>
+          </div>
+        ) : (
+          <>
         <Drawer.Description className='mb-2 pr-8 text-xs tracking-wide text-muted-foreground'>
           {getVesselIdentity(vessel)}
         </Drawer.Description>
@@ -409,6 +415,21 @@ export function MissionPlanner({
               ? 'Plan a waypoint route'
               : 'Plan a mission'}
         </Drawer.Title>
+          </>
+        )}
+
+        {placingWaypoints && (
+          <p className='mt-2 text-xs leading-relaxed text-neutral-400 sm:hidden'>
+            <TextSwap
+              className='w-full justify-start! whitespace-normal!'
+              text={
+                draft.waypoints.length === 0
+                  ? 'Tap the map to add waypoints.'
+                  : 'Tap to add another waypoint. Pull up to review when done.'
+              }
+            />
+          </p>
+        )}
 
         <Drawer.Close
           ref={closeButton}
@@ -424,10 +445,12 @@ export function MissionPlanner({
         className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-[calc(1.25rem-var(--drawer-scrollbar-inset,0px))] scrollbar-thin scrollbar-gutter-both'
       >
         <motion.div
-          key={step}
-          className='mission-drawer-body flow-root pb-5'
+          key={mobile ? 'mobile-planner' : step}
+          className={`mission-drawer-body flow-root ${mobile && step === 'speeds' ? 'pb-2' : 'pb-5'}`}
           initial={
-            reduceMotion ? false : { opacity: 0, transform: 'translateY(4px)' }
+            reduceMotion || mobile
+              ? false
+              : { opacity: 0, transform: 'translateY(4px)' }
           }
           animate={{ opacity: 1, transform: 'translateY(0px)' }}
           transition={{
@@ -436,7 +459,13 @@ export function MissionPlanner({
           }}
         >
           {!placingWaypoints && (
-            <section className={step === 'type' ? '' : 'border-t pt-4'}>
+            <section
+              className={
+                step === 'type'
+                  ? ''
+                  : `border-t pt-4 ${step === 'speeds' ? 'hidden sm:block' : ''}`
+              }
+            >
               {step === 'type' ? (
                 <div aria-label='Mission type' className='grid gap-1.5'>
                   {missionTypes.map(({ value, label, Icon }) => (
@@ -449,10 +478,12 @@ export function MissionPlanner({
                         placementView.current = null;
                         setStep('route');
                         setEditing(value === 'waypoint' || !draft.grid.center);
-                        frameVessel(
-                          Math.min(
-                            map?.getZoom() ?? ROUTE_PLANNING_ZOOM,
-                            ROUTE_PLANNING_ZOOM,
+                        requestAnimationFrame(() =>
+                          frameVessel(
+                            Math.min(
+                              map?.getZoom() ?? ROUTE_PLANNING_ZOOM,
+                              ROUTE_PLANNING_ZOOM,
+                            ),
                           ),
                         );
                       }}
@@ -657,7 +688,7 @@ export function MissionPlanner({
             <>
               <section
                 aria-label='Route summary'
-                className='mt-3 text-xs tabular-nums'
+                className={`mt-3 text-xs tabular-nums ${step === 'speeds' ? 'hidden sm:block' : ''}`}
               >
                 <dl className='mt-1 grid grid-cols-2 gap-3'>
                   <div>
@@ -715,22 +746,15 @@ export function MissionPlanner({
               </section>
               {step === 'speeds' && (
                 <section className='mt-1' aria-label='Mission speeds'>
-                  <div className='mission-speed-pair'>
-                    <MissionSpeedControl
-                      label='Straight-line speed'
-                      value={draft.speed}
-                      max={vessel.simulation.maxSpeed}
-                      onValueChange={speed => update({ speed })}
-                      errorId={speedError ? speedErrorId : undefined}
-                    />
-                    <MissionSpeedControl
-                      label='Turn speed'
-                      value={draft.turnSpeed}
-                      max={vessel.simulation.maxSpeed}
-                      onValueChange={turnSpeed => update({ turnSpeed })}
-                      errorId={speedError ? speedErrorId : undefined}
-                    />
-                  </div>
+                  <MissionSpeedFields
+                    straight={draft.speed}
+                    turn={draft.turnSpeed}
+                    max={vessel.simulation.maxSpeed}
+                    onStraightChange={speed => update({ speed })}
+                    onTurnChange={turnSpeed => update({ turnSpeed })}
+                    errorId={speedError ? speedErrorId : undefined}
+                    mobile={mobile}
+                  />
                   {speedError && (
                     <p
                       id={speedErrorId}
@@ -748,10 +772,10 @@ export function MissionPlanner({
       </div>
 
       {step !== 'type' && (
-        <footer className='shrink-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+        <footer className={`shrink-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${step === 'speeds' ? 'mission-speeds-footer' : ''}`}>
           {step === 'speeds' && (
             <p className='mb-3 px-1 text-[11px] leading-relaxed text-neutral-400'>
-              {vessel.id} will begin moving as soon as you deploy the mission.
+              {mobile ? `${vessel.id} starts moving immediately.` : `${vessel.id} will begin moving as soon as you deploy the mission.`}
             </p>
           )}
           {deploymentError && (
@@ -793,7 +817,7 @@ export function MissionPlanner({
                     bearing: map.getBearing(),
                     pitch: map.getPitch(),
                   };
-                  frameRoute();
+                  requestAnimationFrame(frameRoute);
                 }
               } else {
                 if (!onDeploy(draft))

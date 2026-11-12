@@ -107,6 +107,7 @@ test('boat, rings, trail, and camera render one authoritative frame without a de
   step();
   assert.equal(simulation.getSnapshot(), oldUI, 'UI did not tick');
   assert.equal(markers[0].position, simulation.getFrame().position);
+  assert.equal(vesselMarker.heading, simulation.getFrame().heading, 'hull heading matches live movement');
   assert.equal(markers[1].position, simulation.getFrame().position);
   assert.equal(camera, simulation.getFrame().position);
   assert.deepEqual(live.data.features[0].geometry.coordinates.at(-1), simulation.getFrame().position, 'trail tip uses live frame');

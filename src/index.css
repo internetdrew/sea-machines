@@ -619,3 +619,304 @@
 @media (hover: hover) and (pointer: fine) {
   .vessel-identity:not(:disabled):hover { background: var(--color-neutral-800); }
 }
+
+/* Base UI owns the swipe transform. Natural content determines the frame;
+   a stationary viewport mask preserves the floating margins at every snap. */
+.vessel-details-viewport {
+  --vessel-sheet-gap: 12px;
+  padding-inline: max(var(--vessel-sheet-gap), env(safe-area-inset-left)) max(var(--vessel-sheet-gap), env(safe-area-inset-right));
+  padding-bottom: max(var(--vessel-sheet-gap), env(safe-area-inset-bottom));
+  padding-top: max(1rem, env(safe-area-inset-top));
+  /* This stationary mask preserves the floating gap during drag and release. */
+  clip-path: inset(0 max(var(--vessel-sheet-gap), env(safe-area-inset-right)) max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)) max(var(--vessel-sheet-gap), env(safe-area-inset-left)) round 0 0 1rem 1rem);
+}
+.vessel-details-sheet {
+  --vessel-sheet-offset: max(0px, calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)));
+  height: var(--vessel-frame-height, 100%);
+  max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)));
+
+  transform: translateY(calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)));
+  overflow: hidden;
+  touch-action: none;
+  transition: transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.vessel-details-sheet[data-swiping] {
+  transition-duration: 0ms;
+  user-select: none;
+}
+.vessel-details-sheet[data-starting-style],
+.vessel-details-sheet[data-ending-style] {
+  transform: translateY(calc(100% + max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)) + 2px));
+}
+.vessel-details-sheet[data-ending-style] {
+  transition-duration: calc(var(--drawer-swipe-strength, 1) * 400ms);
+}
+.vessel-details-sheet .vessel-actions-footer {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-details-sheet { transition-duration: 0ms; }
+}
+
+/* Half-open layout 06: clearer readings and a compact, quiet action footer. */
+:is(.vessel-details-sheet, .vessel-details-measure):is([data-level='summary'], [data-level='full']) .vessel-summary-telemetry dd {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+
+/* Expanded layout 01: quiet rules group position and fuel; actions follow. */
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-summary-telemetry { margin-top: 14px; }
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-position-section,
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-fuel-section {
+  border-top: 1px solid rgb(255 255 255 / 5%);
+  padding-top: 12px;
+  margin-top: 14px;
+}
+
+/* The body reveal and dock share the sheet transform clock. No independent
+   button entrance or animated popup padding competes with the swipe. */
+.vessel-details-sheet[data-level='summary'],
+.vessel-details-sheet[data-level='full'] { --vessel-actions-space: var(--vessel-actions-height, 0px); }
+.vessel-actions-dock {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  transform: translateY(calc(-1 * var(--vessel-sheet-offset)));
+  transition: transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.vessel-details-sheet[data-swiping] .vessel-actions-dock { transition-duration: 0ms; }
+@media (prefers-reduced-motion: reduce) {
+  .vessel-actions-dock { transition: none; }
+}
+
+/* Below the fold in compact; the upward pull physically reveals the CTA. */
+.vessel-details-sheet[data-level='compact'] .vessel-actions-dock {
+  --vessel-sheet-offset: var(--vessel-summary-offset);
+  pointer-events: none;
+}
+
+.vessel-details-sheet[data-measuring] { visibility: hidden; }
+.vessel-details-measure { display: flow-root; }
+
+/* Size the scroll area, not popup padding: large offsets must never enlarge
+   Base UI's measured frame through the border-box minimum padding size. */
+.vessel-details-scroll {
+  max-height: max(0px, calc(var(--vessel-frame-height) - var(--vessel-sheet-offset) - var(--vessel-chrome-height) - var(--vessel-actions-space, 0px) - 2px));
+}
+
+/* The moving shell and content viewport have separate jobs. Keep the body
+   frame stable, and reveal it only above the dock as the sheet moves. The
+   inner scroll region can resize without painting through the CTA layer. */
+.vessel-details-body {
+  overflow: hidden;
+  clip-path: inset(0 0 calc(var(--vessel-sheet-offset) + var(--vessel-actions-space, 0px)) 0);
+  transition: clip-path 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.vessel-details-sheet[data-swiping] .vessel-details-body { transition-duration: 0ms; }
+@media (prefers-reduced-motion: reduce) {
+  .vessel-details-body { transition: none; }
+}
+
+/* Mobile mission presentation is isolated from the desktop panel sizing. */
+.mission-mobile-viewport {
+  --mission-sheet-gap: 12px;
+  padding-inline: max(var(--mission-sheet-gap), env(safe-area-inset-left)) max(var(--mission-sheet-gap), env(safe-area-inset-right));
+  padding-bottom: max(var(--mission-sheet-gap), env(safe-area-inset-bottom));
+  padding-top: max(1rem, env(safe-area-inset-top));
+  clip-path: inset(0 max(var(--mission-sheet-gap), env(safe-area-inset-right)) max(var(--mission-sheet-gap), env(safe-area-inset-bottom)) max(var(--mission-sheet-gap), env(safe-area-inset-left)) round 0 0 1rem 1rem);
+}
+.mission-mobile-popup {
+  /* A stable full frame lets measured snaps animate the visible height
+     without competing height and translation changes. The viewport masks
+     the portion below the floating bottom edge. */
+  height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(var(--mission-sheet-gap), env(safe-area-inset-bottom)));
+  max-height: 100%;
+  transform: translateY(calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)));
+  transition: transform var(--resize-dur) var(--resize-ease);
+  touch-action: auto;
+}
+.mission-mobile-popup[data-starting-style],
+.mission-mobile-popup[data-ending-style] {
+  transform: translateY(calc(100% + max(var(--mission-sheet-gap), env(safe-area-inset-bottom))));
+}
+.mission-mobile-popup[data-swiping] {
+  transition-duration: 0ms;
+}
+.mission-mobile-popup .mission-drawer-content > header {
+  padding-top: 0;
+}
+.mission-mobile-popup .mission-drawer-content > header > button {
+  top: 0;
+  min-width: 44px;
+  min-height: 44px;
+}
+.mission-mobile-popup[data-compact]:not([data-choosing-type]) .mission-drawer-content > div,
+.mission-mobile-popup[data-compact] .mission-drawer-content > footer {
+  visibility: hidden;
+}
+.mission-mobile-popup .mission-cta {
+  min-height: 44px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-mobile-popup { transition-duration: 0ms !important; }
+}
+
+.mission-mobile-popup[data-choosing-type] .mission-drawer-body {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.mission-mobile-popup > .mission-drawer-content {
+  flex: none;
+  height: max(0px, calc(var(--mission-frame-height, 260px) - 46px));
+}
+
+/* Mobile speed entry: label, rail and exact value share one touch row. */
+.mission-mobile-popup .mission-speed-fields {
+  container: mission-speeds / inline-size;
+}
+.mission-mobile-popup .mission-speed-pair {
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin-top: 0;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-control {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-heading {
+  display: contents;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-heading label {
+  grid-column: 1;
+  grid-row: 1;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-heading label {
+  font-size: 12px;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-readout {
+  margin-top: 0;
+  grid-column: 3;
+  grid-row: 1;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-value {
+  width: 3ch;
+  min-width: 44px;
+  min-height: 44px;
+  text-align: right;
+  font-size: 20px;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-rail {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding-inline: 0;
+  margin-top: 0;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-slider::-webkit-slider-thumb {
+  width: 13px;
+  height: 27px;
+}
+.mission-mobile-popup .mission-speed-pair .mission-speed-slider::-moz-range-thumb {
+  width: 13px;
+  height: 27px;
+}
+.mission-mobile-popup .mission-speeds-footer {
+  padding-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.mission-mobile-popup .mission-speeds-footer > p {
+  grid-column: 1 / -1;
+}
+.mission-mobile-popup .mission-speeds-footer > .mission-cta {
+  margin-bottom: 0;
+}
+
+.mission-mobile-popup .mission-speeds-footer > p:first-child {
+  margin-bottom: 2px;
+}
+@container mission-speeds (width < 280px) {
+  .mission-mobile-popup .mission-speed-pair .mission-speed-control {
+    grid-template-columns: 1fr 64px;
+    gap: 0 8px;
+  }
+  .mission-mobile-popup .mission-speed-pair .mission-speed-readout {
+    grid-column: 2;
+  }
+  .mission-mobile-popup .mission-speed-pair .mission-speed-rail {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Mobile mission control keeps navigation, warning and actions in one dock. */
+.mission-mobile-popup .mission-monitor-mobile-header {
+  padding-bottom: 0;
+}
+.mission-monitor-mobile-body > div > p {
+  border-left: 0;
+  margin: 0;
+  padding-left: 0;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  align-items: center;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) > div:first-child {
+  display: contents;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) h3 {
+  display: none;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) > #mission-speed-editor {
+  grid-column: 1;
+  grid-row: 1;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) button {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 44px;
+  min-height: 44px;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) dl {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) dt {
+  font-size: 10px;
+}
+.mission-monitor-mobile-speeds:not([data-editing]) dd {
+  margin: 0;
+  font-size: 13px;
+}
+.mission-monitor-mobile-speeds > p:empty {
+  display: none;
+}
+.mission-monitor-mobile-speeds > p:not(:empty) {
+  grid-column: 1 / -1;
+}
+.mission-monitor-mobile-footer {
+  padding-top: 4px;
+}
+
+.mission-monitor-mobile-speeds[data-editing] {
+  padding-top: 4px;
+}
+.mission-monitor-mobile-speeds[data-editing] > div:first-child {
+  display: none;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { Marker } from 'maplibre-gl';
 import { useMap } from '@/components/ui/map';
 import { createVesselRenderer } from './renderer';
@@ -20,8 +20,10 @@ function LiveMissionLayer({ vessel }: { vessel: Vessel }) {
 export function VesselLayer({ vessel, missionDrawer, activityDrawer, follow, showRangeRings, onPan }: Props) {
   const { map, mapLib, isLoaded } = useMap();
   const { simulation } = vessel;
-  const marker = useRef<Marker | null>(null);
-  const missionMarker = useRef<Marker | null>(null);
+  // Responsive interaction roots can remount their markers. Track the actual
+  // instances so the renderer never keeps writing to detached markers.
+  const [marker, setMarker] = useState<Marker | null>(null);
+  const [missionMarker, setMissionMarker] = useState<Marker | null>(null);
   const renderer = useRef<ReturnType<typeof createVesselRenderer> | null>(null);
   const planningActive = useFleetInteraction(state => selectPlanningVesselId(state) !== null);
   useEffect(() => {
@@ -29,8 +31,8 @@ export function VesselLayer({ vessel, missionDrawer, activityDrawer, follow, sho
       !map ||
       !mapLib ||
       !isLoaded ||
-      !marker.current ||
-      !missionMarker.current
+      !marker ||
+      !missionMarker
     )
       return;
     const instance = createVesselRenderer(
@@ -38,8 +40,8 @@ export function VesselLayer({ vessel, missionDrawer, activityDrawer, follow, sho
       mapLib,
       simulation,
       {
-        marker: marker.current,
-        missionMarker: missionMarker.current,
+        marker,
+        missionMarker,
       },
       { follow: false, showRangeRings: false },
       onPan,
@@ -49,14 +51,14 @@ export function VesselLayer({ vessel, missionDrawer, activityDrawer, follow, sho
       instance.destroy();
       renderer.current = null;
     };
-  }, [map, mapLib, isLoaded, simulation, onPan]);
+  }, [map, mapLib, isLoaded, simulation, onPan, marker, missionMarker]);
 
   useEffect(() => {
     renderer.current?.setOptions({ follow, showRangeRings: showRangeRings && !planningActive });
-  }, [map, mapLib, isLoaded, follow, showRangeRings, planningActive]);
+  }, [map, mapLib, isLoaded, follow, showRangeRings, planningActive, marker, missionMarker]);
 
   return <>
     <LiveMissionLayer vessel={vessel} />
-    <VesselMarker vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} marker={marker} missionMarker={missionMarker} />
+    <VesselMarker vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} marker={setMarker} missionMarker={setMissionMarker} />
   </>;
 }
