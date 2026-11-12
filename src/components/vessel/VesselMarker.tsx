@@ -7,7 +7,7 @@ import { MapMarker, MarkerContent } from '@/components/ui/map';
 import { useFleetInteraction, useFleetInteractions } from '@/lib/vessel/use-interactions';
 import { selectActiveVesselId, selectPlanningVesselId } from '@/lib/vessel/interactions';
 import { getVesselIdentity, isMissionInProgress } from '@/lib/vessel/vessel';
-import { getFuelAppearance } from '@/lib/vessel/fuel';
+import { VesselActionsRoot } from './VesselActionsRoot';
 import boat from '@/assets/boat.svg?raw';
 import selkie from '@/assets/patrol-boat.svg?raw';
 import { VesselActionsPopover } from './VesselActionsPopover';
@@ -28,12 +28,7 @@ const getMobile = () => window.matchMedia(mobileQuery).matches;
 
 
 export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, missionMarker }: Props) {
-  const warningCount = vessel.fuelTanks.filter(tank => tank.capacityLiters > 0 && getFuelAppearance(Math.max(0, Math.min(100, tank.remainingLiters / tank.capacityLiters * 100))).label !== 'Normal').length;
-  const compactSnapPoint = `${104 + warningCount * 48}px`;
-  const vesselSnapPoints = [compactSnapPoint, '344px', 1];
   const mobile = useSyncExternalStore(subscribeMobile, getMobile, () => false);
-  const [snapPoint, setSnapPoint] = useState<Drawer.Root.SnapPoint | null>('344px');
-  const Root = mobile ? Drawer.Root : Popover.Root;
   const Trigger = mobile ? Drawer.Trigger : Popover.Trigger;
   const { simulation } = vessel;
   const [initialFrame] = useState(() => simulation.getFrame());
@@ -47,16 +42,7 @@ export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, mi
   const openingDrawer = useRef(false);
   const markerButton = useRef<HTMLButtonElement | null>(null);
   return (
-    <Root
-      {...(mobile ? {
-        modal: false,
-        disablePointerDismissal: true,
-        snapPoints: vesselSnapPoints,
-        snapToSequentialPoints: true,
-        snapPoint,
-        onSnapPointChange: setSnapPoint,
-        onOpenChangeComplete: (open: boolean) => { if (!open) setSnapPoint('344px'); },
-      } : {})}
+    <VesselActionsRoot mobile={mobile}
       open={popoverOpen && !selectionDisabled}
       onOpenChange={open => {
         if (open && selectionDisabled) return;
@@ -140,8 +126,8 @@ export function VesselMarker({ vessel, missionDrawer, activityDrawer, marker, mi
             />
           </Trigger>
         </MarkerContent>
-        <VesselActionsPopover compactSnapPoint={compactSnapPoint} mobile={mobile} snapPoint={snapPoint} onSnapPointChange={setSnapPoint} vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} markerButton={markerButton} onOpenDrawer={() => { openingDrawer.current = true; }} resolveFinalFocus={() => openingDrawer.current || (interactions.getSnapshot().popoverVesselId !== null && interactions.getSnapshot().popoverVesselId !== vessel.id) ? false : markerButton.current ?? false} />
+        <VesselActionsPopover mobile={mobile} vessel={vessel} missionDrawer={missionDrawer} activityDrawer={activityDrawer} markerButton={markerButton} onOpenDrawer={() => { openingDrawer.current = true; }} resolveFinalFocus={() => openingDrawer.current || (interactions.getSnapshot().popoverVesselId !== null && interactions.getSnapshot().popoverVesselId !== vessel.id) ? false : markerButton.current ?? false} />
       </MapMarker>
-    </Root>
+    </VesselActionsRoot>
   );
 }

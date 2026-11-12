@@ -1,54 +1,27 @@
 import { missionProgressPercent } from '@/lib/vessel/mission';
 import { getVesselDisplayName } from '@/lib/vessel/vessel';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { SmoothResize } from '@/components/SmoothResize';
-import { TextSwap } from '@/components/TextSwap';
+import { VesselPosition, VesselPositionContent } from './VesselPosition';
 import { distanceNm } from '@/lib/vessel/mission';
 import { getFuelAppearance } from '@/lib/vessel/fuel';
 import type { VesselFrame } from '@/lib/vessel/simulation';
 import { isMissionInProgress, type Vessel } from '@/lib/vessel/vessel';
 
-export function VesselHoverCard({
-  vessel,
-  snapshot,
-  headerAction,
-  detailLevel = 'full',
-}: {
+type Props = {
   vessel: Vessel;
   snapshot: VesselFrame;
   headerAction?: ReactNode;
   detailLevel?: 'compact' | 'summary' | 'full';
-}) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>(
-    'idle',
-  );
-  const resetCopy = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      clearTimeout(resetCopy.current);
-    };
-  }, []);
-  const copyPosition = async () => {
-    clearTimeout(resetCopy.current);
-    const [longitude, latitude] = snapshot.position;
-    try {
-      await navigator.clipboard.writeText(
-        `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-      );
-      if (!mounted.current) return;
-      setCopyState('copied');
-      resetCopy.current = setTimeout(() => setCopyState('idle'), 2200);
-    } catch {
-      if (mounted.current) setCopyState('error');
-    }
-  };
+};
+
+export function VesselHoverCard(props: Props) {
+  return <VesselCardContent {...props} position={<VesselPosition snapshot={props.snapshot} />} />;
+}
+
+/** Pure vessel presentation: probes never mount copy feedback or animation effects. */
+export function VesselCardContent({ vessel, snapshot, headerAction, detailLevel = 'full', position }: Props & { position?: ReactNode; }) {
   const mission = snapshot.mission;
   const total = useMemo(
     () =>
@@ -125,36 +98,9 @@ export function VesselHoverCard({
           </dd>
         </div>
       </dl>
-      <section hidden={detailLevel !== 'full'} className='vessel-position-section relative mt-5'>
-        <div className='flex items-center justify-between gap-3'>
-          <h3 className='text-xs font-medium text-neutral-400'>Position</h3>
-          <button type='button' onClick={copyPosition} aria-label='Copy vessel position, latitude and longitude' className='min-h-8 min-w-11 cursor-pointer rounded-md border border-neutral-800 px-2 text-xs text-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'>
-            <SmoothResize>
-              <TextSwap text={copyState === 'copied' ? 'Copied' : 'Copy'} duration={0.09} offset={2} blur={1} />
-            </SmoothResize>
-          </button>
-        </div>
-        <span role='status' className='sr-only'>{copyState === 'copied' ? 'Vessel position copied' : copyState === 'error' ? 'Unable to copy vessel position. Select the coordinates to copy manually.' : ''}</span>
-        <div className='select-text'>
-          <span className='mt-2 grid grid-cols-2 gap-x-3 text-xs tabular-nums'>
-            <span className='min-w-0'>
-              <span className='block text-neutral-400'>Latitude</span>
-              <span className='mt-1 block whitespace-nowrap font-medium text-neutral-100'>
-                {Math.abs(snapshot.position[1]).toFixed(4)}°{' '}
-                {snapshot.position[1] >= 0 ? 'N' : 'S'}
-              </span>
-            </span>
-            <span className='min-w-0 text-right'>
-              <span className='block text-neutral-400'>Longitude</span>
-              <span className='mt-1 block whitespace-nowrap font-medium text-neutral-100'>
-                {Math.abs(snapshot.position[0]).toFixed(4)}°{' '}
-                {snapshot.position[0] >= 0 ? 'E' : 'W'}
-              </span>
-            </span>
-          </span>
-        </div>
-        {copyState === 'error' && <p className='mt-2 text-[11px] text-amber-400'>Copy unavailable. Select the coordinates to copy manually.</p>}
-      </section>
+      <div hidden={detailLevel !== 'full'}>
+        {detailLevel === 'full' && (position ?? <VesselPositionContent snapshot={snapshot} />)}
+      </div>
       {active && detailLevel === 'full' && (
         <section aria-label='Mission' className='mt-5 text-xs'>
           <dl className='space-y-1'>

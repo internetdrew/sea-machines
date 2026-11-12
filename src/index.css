@@ -620,21 +620,21 @@
   .vessel-identity:not(:disabled):hover { background: var(--color-neutral-800); }
 }
 
-/* Keep the measured frame stable at every snap point.
-   Base UI owns gesture tracking; the offset also reserves the offscreen space
-   so the footer stays inside the visible portion at every snap point. */
+/* Base UI owns the swipe transform. Natural content determines the frame;
+   a stationary viewport mask preserves the floating margins at every snap. */
 .vessel-details-viewport {
   --vessel-sheet-gap: 12px;
   padding-inline: max(var(--vessel-sheet-gap), env(safe-area-inset-left)) max(var(--vessel-sheet-gap), env(safe-area-inset-right));
   padding-bottom: max(var(--vessel-sheet-gap), env(safe-area-inset-bottom));
+  padding-top: max(1rem, env(safe-area-inset-top));
   /* This stationary mask preserves the floating gap during drag and release. */
   clip-path: inset(0 max(var(--vessel-sheet-gap), env(safe-area-inset-right)) max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)) max(var(--vessel-sheet-gap), env(safe-area-inset-left)) round 0 0 1rem 1rem);
 }
 .vessel-details-sheet {
   --vessel-sheet-offset: max(0px, calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)));
-  height: min(500px, calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(var(--vessel-sheet-gap), env(safe-area-inset-bottom))));
+  height: var(--vessel-frame-height, 100%);
   max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)));
-  padding-bottom: calc(max(0px, calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px))) + var(--vessel-actions-space, 0px));
+
   transform: translateY(calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)));
   overflow: hidden;
   touch-action: none;
@@ -647,49 +647,39 @@
 .vessel-details-sheet[data-starting-style],
 .vessel-details-sheet[data-ending-style] {
   transform: translateY(calc(100% + max(var(--vessel-sheet-gap), env(safe-area-inset-bottom)) + 2px));
-  padding-bottom: 0;
 }
 .vessel-details-sheet[data-ending-style] {
   transition-duration: calc(var(--drawer-swipe-strength, 1) * 400ms);
 }
-.vessel-details-sheet .vessel-actions-footer { margin-top: 0; }
+.vessel-details-sheet .vessel-actions-footer {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
 @media (prefers-reduced-motion: reduce) {
   .vessel-details-sheet { transition-duration: 0ms; }
 }
 
 /* Half-open layout 06: clearer readings and a compact, quiet action footer. */
-.vessel-details-sheet[data-level='summary'] .vessel-summary-telemetry dd {
+:is(.vessel-details-sheet, .vessel-details-measure):is([data-level='summary'], [data-level='full']) .vessel-summary-telemetry dd {
   font-size: 18px;
   line-height: 1.3;
   letter-spacing: -0.2px;
-}
-.vessel-details-sheet[data-level='summary'] .vessel-actions-footer {
-  border-top: 0;
-  padding-top: 0;
 }
 
 /* Expanded layout 01: quiet rules group position and fuel; actions follow. */
-.vessel-details-sheet[data-level='full'] .vessel-summary-telemetry { margin-top: 14px; }
-.vessel-details-sheet[data-level='full'] .vessel-summary-telemetry dd {
-  font-size: 18px;
-  line-height: 1.3;
-  letter-spacing: -0.2px;
-}
-.vessel-details-sheet[data-level='full'] .vessel-position-section,
-.vessel-details-sheet[data-level='full'] .vessel-fuel-section {
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-summary-telemetry { margin-top: 14px; }
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-position-section,
+:is(.vessel-details-sheet, .vessel-details-measure)[data-level='full'] .vessel-fuel-section {
   border-top: 1px solid rgb(255 255 255 / 5%);
   padding-top: 12px;
   margin-top: 14px;
 }
-.vessel-details-sheet[data-level='full'] .vessel-actions-footer {
-  border-top: 0;
-  padding-top: 0;
-}
 
-/* Keep the CTA on the same transform clock as the sheet. Layout padding only
-   reserves its final space; it no longer animates against the compositor. */
+/* The body reveal and dock share the sheet transform clock. No independent
+   button entrance or animated popup padding competes with the swipe. */
 .vessel-details-sheet[data-level='summary'],
-.vessel-details-sheet[data-level='full'] { --vessel-actions-space: 116px; }
+.vessel-details-sheet[data-level='full'] { --vessel-actions-space: var(--vessel-actions-height, 0px); }
 .vessel-actions-dock {
   position: absolute;
   inset-inline: 0;
@@ -702,4 +692,30 @@
   .vessel-actions-dock { transition: none; }
 }
 
-.vessel-details-sheet[data-level='compact'] .vessel-actions-dock { visibility: hidden; pointer-events: none; }
+/* Below the fold in compact; the upward pull physically reveals the CTA. */
+.vessel-details-sheet[data-level='compact'] .vessel-actions-dock {
+  --vessel-sheet-offset: var(--vessel-summary-offset);
+  pointer-events: none;
+}
+
+.vessel-details-sheet[data-measuring] { visibility: hidden; }
+.vessel-details-measure { display: flow-root; }
+
+/* Size the scroll area, not popup padding: large offsets must never enlarge
+   Base UI's measured frame through the border-box minimum padding size. */
+.vessel-details-scroll {
+  max-height: max(0px, calc(var(--vessel-frame-height) - var(--vessel-sheet-offset) - var(--vessel-handle-height) - var(--vessel-actions-space, 0px) - 2px));
+}
+
+/* The moving shell and content viewport have separate jobs. Keep the body
+   frame stable, and reveal it only above the dock as the sheet moves. The
+   inner scroll region can resize without painting through the CTA layer. */
+.vessel-details-body {
+  overflow: hidden;
+  clip-path: inset(0 0 calc(var(--vessel-sheet-offset) + var(--vessel-actions-space, 0px)) 0);
+  transition: clip-path 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.vessel-details-sheet[data-swiping] .vessel-details-body { transition-duration: 0ms; }
+@media (prefers-reduced-motion: reduce) {
+  .vessel-details-body { transition: none; }
+}
