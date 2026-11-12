@@ -1,8 +1,9 @@
 import { useId, useCallback } from 'react';
-import { MissionSpeedControl } from './MissionSpeedControl';
+import { MissionSpeedFields } from './MissionSpeedFields';
 import type { Vessel } from '@/lib/vessel/vessel';
 
-export function MissionSpeedEditor({ vessel, straight, turn, setStraight, setTurn, error, onCancel }: {
+export function MissionSpeedEditor({ vessel, straight, turn, setStraight, setTurn, error, onCancel, mobile = false }: {
+  mobile?: boolean;
   vessel: Vessel;
   straight: number | null;
   turn: number | null;
@@ -16,12 +17,11 @@ export function MissionSpeedEditor({ vessel, straight, turn, setStraight, setTur
     element?.querySelector<HTMLInputElement>('input[type="range"]')?.focus({ preventScroll: true });
   }, []);
   return <div onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); } }}>
-    <p className='mt-2 text-[10px] leading-relaxed text-muted-foreground'>Changes take effect when you apply them.</p>
-    <div ref={focusFirst} className='mission-speed-pair'>
-      <MissionSpeedControl label='Straight-line speed' value={straight} max={vessel.simulation.maxSpeed} onValueChange={setStraight} errorId={error ? errorId : undefined} />
-      <MissionSpeedControl label='Turn speed' value={turn} max={vessel.simulation.maxSpeed} onValueChange={setTurn} errorId={error ? errorId : undefined} />
+    {!mobile && <p className='mt-2 text-[10px] leading-relaxed text-muted-foreground'>Changes take effect when you apply them.</p>}
+    <div ref={focusFirst}>
+      <MissionSpeedFields straight={straight} turn={turn} max={vessel.simulation.maxSpeed} onStraightChange={setStraight} onTurnChange={setTurn} errorId={error ? errorId : undefined} mobile={mobile} />
     </div>
-    <p id={errorId} role='alert' className='mt-2 text-[10px] text-amber-400'>{error}</p>
+    {error && <p id={errorId} role='alert' className='mt-2 text-[10px] text-amber-400'>{error}</p>}
 
   </div>;
 }

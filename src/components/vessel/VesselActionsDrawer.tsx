@@ -11,17 +11,17 @@ import { getVesselIdentity, type Vessel } from '@/lib/vessel/vessel';
 import { VesselCardContent } from './VesselHoverCard';
 import { useVesselDrawerState } from '@/lib/vessel/drawer-context';
 
-type Props = { vessel: Vessel; snapshot: VesselFrame; card: ReactNode; actions: ReactNode; resolveFinalFocus: () => HTMLButtonElement | false; };
-export function VesselActionsDrawer({ vessel, snapshot, card, actions, resolveFinalFocus }: Props) {
+type Props = { vessel: Vessel; snapshot: VesselFrame; header: ReactNode; card: ReactNode; actions: ReactNode; resolveFinalFocus: () => HTMLButtonElement | false; };
+export function VesselActionsDrawer({ vessel, snapshot, header, card, actions, resolveFinalFocus }: Props) {
   const state = useVesselDrawerState();
   if (!state) throw new Error('VesselActionsDrawer requires a mobile VesselActionsRoot');
-  return <DrawerContent {...{ vessel, snapshot, card, actions, resolveFinalFocus }} {...state} />;
+  return <DrawerContent {...{ vessel, snapshot, header, card, actions, resolveFinalFocus }} {...state} />;
 }
-function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, view, sizes, setView, setSizes }: Props & NonNullable<ReturnType<typeof useVesselDrawerState>>) {
+function DrawerContent({ vessel, snapshot, header, card, actions, resolveFinalFocus, view, sizes, setView, setSizes }: Props & NonNullable<ReturnType<typeof useVesselDrawerState>>) {
   const reducedMotion = useReducedMotion();
   // Measure inert natural layouts, never the animated/scroll-constrained frame.
   const [measureViewport, viewportBounds] = useMeasure({ offsetSize: true });
-  const [measureHandle, handleBounds] = useMeasure({ offsetSize: true });
+  const [measureChrome, chromeBounds] = useMeasure({ offsetSize: true });
   const [measureActions, actionsBounds] = useMeasure({ offsetSize: true });
   const [measureCompact, compactBounds] = useMeasure({ offsetSize: true });
   const [measureSummary, summaryBounds] = useMeasure({ offsetSize: true });
@@ -34,7 +34,7 @@ function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, vie
 
   useLayoutEffect(() => {
     const viewport = viewportElement.current;
-    if (!viewport || !compactBounds.height || !summaryBounds.height || !fullBounds.height || !actionsBounds.height || !handleBounds.height) return;
+    if (!viewport || !compactBounds.height || !summaryBounds.height || !fullBounds.height || !actionsBounds.height || !chromeBounds.height) return;
     const style = getComputedStyle(viewport);
     const available = viewportBounds.height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
     if (available <= 0) return;
@@ -42,9 +42,9 @@ function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, vie
       compact: compactBounds.height,
       summary: summaryBounds.height,
       full: fullBounds.height,
-    }, handleBounds.height, actionsBounds.height, available);
+    }, chromeBounds.height, actionsBounds.height, available);
     if (!sizes || Object.keys(next).some(key => next[key as keyof VesselDrawerSizes] !== sizes[key as keyof VesselDrawerSizes])) setSizes(next);
-  }, [compactBounds.height, summaryBounds.height, fullBounds.height, handleBounds.height, actionsBounds.height, viewportBounds.height, sizes, setSizes]);
+  }, [compactBounds.height, summaryBounds.height, fullBounds.height, chromeBounds.height, actionsBounds.height, viewportBounds.height, sizes, setSizes]);
 
   return (
     <Drawer.Viewport ref={setViewport} className='vessel-details-viewport pointer-events-none fixed inset-0 z-50 flex items-end justify-center'>
@@ -53,9 +53,9 @@ function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, vie
         className='vessel-details-sheet pointer-events-auto relative flex w-full flex-col rounded-2xl border border-neutral-800 bg-neutral-900 text-sm text-neutral-100 shadow-[0_-8px_32px_rgba(0,0,0,0.24)] outline-none'
         data-level={view}
         data-measuring={!sizes || undefined}
-        style={{ '--vessel-frame-height': sizes ? `${sizes.full}px` : '100%', '--vessel-actions-height': sizes ? `${sizes.actions}px` : '0px', '--vessel-summary-offset': sizes ? `${sizes.full - sizes.summary}px` : '0px', '--vessel-handle-height': `${handleBounds.height}px` } as CSSProperties}
+        style={{ '--vessel-frame-height': sizes ? `${sizes.full}px` : '100%', '--vessel-actions-height': sizes ? `${sizes.actions}px` : '0px', '--vessel-summary-offset': sizes ? `${sizes.full - sizes.summary}px` : '0px', '--vessel-chrome-height': `${chromeBounds.height}px` } as CSSProperties}
       >
-        <div ref={measureHandle} className='shrink-0 px-5 pt-1'>
+        <div ref={measureChrome} className='shrink-0 px-5 pt-1'>
           <button
             type='button'
             aria-label={
@@ -73,6 +73,7 @@ function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, vie
               className='h-1 w-10 rounded-full bg-neutral-600'
             />
           </button>
+          <div className='vessel-details-header py-2'>{header}</div>
           <Drawer.Title className='sr-only'>
             {getVesselIdentity(vessel)}
           </Drawer.Title>
@@ -144,7 +145,7 @@ function DrawerContent({ vessel, snapshot, card, actions, resolveFinalFocus, vie
         <div aria-hidden='true' inert className='vessel-measurements pointer-events-none absolute inset-x-0 top-0 invisible text-sm'>
           {(['compact', 'summary', 'full'] as const).map(level => (
             <div key={level} ref={level === 'compact' ? measureCompact : level === 'summary' ? measureSummary : measureFull} className='vessel-details-measure px-5 pb-4' data-level={level}>
-              <VesselCardContent vessel={vessel} snapshot={snapshot} detailLevel={level} headerAction={<span className='-mt-3 -mr-3 size-11 shrink-0' />} />
+              <VesselCardContent vessel={vessel} snapshot={snapshot} detailLevel={level} showHeader={false} />
             </div>
           ))}
         </div>

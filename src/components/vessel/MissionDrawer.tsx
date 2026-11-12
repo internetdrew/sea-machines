@@ -14,7 +14,7 @@ import { useMap } from '@/components/ui/map';
 import type { Vessel } from '@/lib/vessel/vessel';
 import { MissionPlanner } from './MissionPlanner';
 import type { MissionPlanningStep } from './MissionPlanner';
-import { fitMissionRoute } from '@/lib/mission-camera';
+import { fitMissionRoute, missionMapPadding, missionMapOffset } from '@/lib/mission-camera';
 import {
   createVesselMissionDraft,
   missionCoordinates,
@@ -22,6 +22,8 @@ import {
 } from '@/lib/vessel/mission';
 import { DEFAULT_MAP_ZOOM } from '@/lib/vessel/navigation';
 import type { MissionDraft } from '@/lib/vessel/mission';
+import { MissionMobileDrawer } from './MissionMobileDrawer';
+import { getMissionMobile, subscribeMissionMobile, MISSION_COMPACT_SNAP, MISSION_EXPANDED_SNAP } from '@/lib/mission-mobile-drawer';
 import { MissionMonitor } from './MissionMonitor';
 
 function MissionDrawerBody(props: ComponentProps<typeof MissionPlanner>) {
@@ -44,15 +46,10 @@ function MissionDrawerBody(props: ComponentProps<typeof MissionPlanner>) {
       ]);
       return;
     }
-    const container = map.getContainer();
-    const width =
-      container.querySelector('.mission-drawer-popup')?.getBoundingClientRect()
-        .width ?? 384;
-    const occupied = Math.min(width + 74, container.clientWidth - 80);
     map.easeTo({
       center: props.vessel.simulation.getFrame().position,
       zoom: Math.max(map.getZoom(), DEFAULT_MAP_ZOOM),
-      offset: [-occupied / 2, 0],
+      offset: missionMapOffset(map),
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 0
         : 300,
@@ -66,7 +63,7 @@ function MissionDrawerBody(props: ComponentProps<typeof MissionPlanner>) {
     return () => cancelAnimationFrame(frame);
   }, [map, props.isOpen, props.vessel]);
   return snapshot.mission ? (
-    <MissionMonitor vessel={props.vessel} />
+    <MissionMonitor vessel={props.vessel} mobile={props.mobile} />
   ) : (
     <MissionPlanner {...props} />
   );
@@ -87,7 +84,12 @@ export function MissionDrawer({
   onDeploy?: () => void;
 }) {
   const { map } = useMap();
+  const mobile = useSyncExternalStore(subscribeMissionMobile, getMissionMobile, () => false);
+  const [mobileSnap, setMobileSnap] = useState<'compact' | 'expanded'>(MISSION_COMPACT_SNAP);
   const interactions = useFleetInteractions();
+  const [compactHeight, setCompactHeight] = useState(260);
+  const [expandedHeight, setExpandedHeight] = useState(260);
+  const panel = useFleetInteraction(state => state.missionPanel);
   const open = useFleetInteraction(state => state.missionPanel !== null);
   const closeGuard = useRef<(() => boolean) | null>(null);
   const registerCloseGuard = useCallback((guard: () => boolean) => {
@@ -98,6 +100,9 @@ export function MissionDrawer({
   }, []);
   const [steps, setSteps] = useState<Record<string, MissionPlanningStep>>({});
   const [drafts, setDrafts] = useState<Record<string, MissionDraft>>({});
+  const choosingType = !!panel && (steps[panel.vesselId] ?? 'type') === 'type'
+    && !vessels.find(vessel => vessel.id === panel.vesselId)?.simulation.getSnapshot().mission;
+  const compactSnap = compactHeight;
   const attachDrawerMotion = useCallback(
     (popup: HTMLDivElement | null) => {
       if (!popup || !map) return;
@@ -111,6 +116,11 @@ export function MissionDrawer({
       open={open}
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen) {
+          if (mobile && details.reason === 'swipe') {
+            details.cancel();
+            setMobileSnap(MISSION_COMPACT_SNAP);
+            return;
+          }
           if (closeGuard.current && !closeGuard.current()) {
             details.cancel();
             return;
@@ -126,7 +136,12 @@ export function MissionDrawer({
           interactions.dispatch({ type: 'open-mission', vesselId: vessel.id, planning: !vessel.simulation.getSnapshot().mission });
         }
       }}
-      swipeDirection='right'
+      onOpenChangeComplete={open => { if (!open) setMobileSnap(MISSION_COMPACT_SNAP); }}
+      snapPoints={mobile ? [compactSnap, expandedHeight] : undefined}
+      snapPoint={mobile ? (mobileSnap === MISSION_COMPACT_SNAP ? compactSnap : expandedHeight) : null}
+      onSnapPointChange={point => { if (point !== null) setMobileSnap(point === compactSnap ? MISSION_COMPACT_SNAP : MISSION_EXPANDED_SNAP); }}
+      snapToSequentialPoints
+      swipeDirection={mobile ? 'down' : 'right'}
       modal={false}
       disablePointerDismissal
     >
@@ -134,17 +149,9 @@ export function MissionDrawer({
         const vessel = vessels.find(
           candidate => candidate.id === payload?.vesselId,
         );
-        return (
-          <Drawer.Portal container={map?.getContainer()}>
-            <Drawer.Viewport className='mission-drawer-viewport pointer-events-none fixed inset-0 my-(--map-edge-inset) ml-4 mr-[calc(var(--map-edge-inset,1rem)+2.125rem+0.5rem)] z-60 flex justify-end overflow-hidden'>
-              <Drawer.Popup
-                ref={attachDrawerMotion}
-                finalFocus={() => payload?.returnFocus.current ?? false}
-                className='dark mission-drawer-popup pointer-events-auto relative flex self-start flex-col rounded-2xl max-h-full w-96 max-w-full overflow-hidden border border-neutral-800 bg-neutral-900 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none'
-              >
-                <Drawer.Content className='mission-drawer-content relative flex min-h-0 flex-1 flex-col overflow-hidden'>
-                  {vessel && (
+        const content = vessel && (
                     <MissionDrawerBody
+                      mobile={mobile}
                       key={vessel.id}
                       vessel={vessel}
                       draft={
@@ -163,6 +170,7 @@ export function MissionDrawer({
                       step={steps[vessel.id] ?? 'type'}
                       onStepChange={step => {
                         if (step !== 'type') interactions.dispatch({ type: 'lock-planning', vesselId: vessel.id });
+                        if (mobile) setMobileSnap(step === 'speeds' ? MISSION_EXPANDED_SNAP : MISSION_COMPACT_SNAP);
                         setSteps(current => ({
                           ...current,
                           [vessel.id]: step,
@@ -207,19 +215,7 @@ export function MissionDrawer({
                               [Math.max(...longitudes), Math.max(...latitudes)],
                             ],
                             {
-                              padding: {
-                                top: 80,
-                                bottom: 80,
-                                left: 64,
-                                right: Math.min(
-                                  (map
-                                    .getContainer()
-                                    .querySelector('.mission-drawer-popup')
-                                    ?.getBoundingClientRect().width ?? 384) +
-                                    122,
-                                  map.getContainer().clientWidth - 100,
-                                ),
-                              },
+                              padding: missionMapPadding(map),
                               maxZoom: 17,
                               duration: 350,
                               animate: !window.matchMedia(
@@ -245,10 +241,31 @@ export function MissionDrawer({
                         handle.close();
                       }}
                     />
-                  )}
+                  );
+        return (
+          <Drawer.Portal container={map?.getContainer()}>
+            {mobile ? (
+              <MissionMobileDrawer
+                expandedHeight={expandedHeight}
+                onExpandedHeightChange={setExpandedHeight}
+                compactHeight={compactHeight}
+                choosingType={choosingType}
+                onCompactHeightChange={setCompactHeight}
+                compact={mobileSnap === MISSION_COMPACT_SNAP}
+                onToggle={() => setMobileSnap(mobileSnap === MISSION_COMPACT_SNAP ? MISSION_EXPANDED_SNAP : MISSION_COMPACT_SNAP)}
+                finalFocus={() => payload?.returnFocus.current ?? false}
+              >{content}</MissionMobileDrawer>
+            ) : <Drawer.Viewport className='mission-drawer-viewport pointer-events-none fixed inset-0 my-(--map-edge-inset) ml-4 mr-[calc(var(--map-edge-inset,1rem)+2.125rem+0.5rem)] z-60 flex justify-end overflow-hidden'>
+              <Drawer.Popup
+                ref={attachDrawerMotion}
+                finalFocus={() => payload?.returnFocus.current ?? false}
+                className='dark mission-drawer-popup pointer-events-auto relative flex self-start flex-col rounded-2xl max-h-full w-96 max-w-full overflow-hidden border border-neutral-800 bg-neutral-900 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.22)] outline-none'
+              >
+                <Drawer.Content className='mission-drawer-content relative flex min-h-0 flex-1 flex-col overflow-hidden'>
+                  {content}
                 </Drawer.Content>
               </Drawer.Popup>
-            </Drawer.Viewport>
+            </Drawer.Viewport>}
           </Drawer.Portal>
         );
       }}

@@ -6,7 +6,7 @@ import { X } from 'lucide-react';
 import { CLOSE_BUTTON_CLASS } from '@/components/CloseButton';
 import { VesselActionsDrawer } from './VesselActionsDrawer';
 import { useVesselDrawerState } from '@/lib/vessel/drawer-context';
-import { VesselHoverCard } from './VesselHoverCard';
+import { VesselCardHeader, VesselHoverCard } from './VesselHoverCard';
 import { useFleetInteraction } from '@/lib/vessel/use-interactions';
 import { selectPlanningVesselId } from '@/lib/vessel/interactions';
 import { getVesselIdentity, isMissionInProgress } from '@/lib/vessel/vessel';
@@ -43,19 +43,22 @@ function VesselActionsContent({ mobile, vessel, missionDrawer, activityDrawer, m
     state => state.missionPanel?.vesselId === vessel.id,
   );
   const Close = mobile ? Drawer.Close : Popover.Close;
+  const closeAction = (
+    <Close
+      aria-label='Close vessel actions'
+      className={`${CLOSE_BUTTON_CLASS} ${mobile ? 'min-h-11 min-w-11' : ''}`}
+    >
+      <X className='size-4' />
+    </Close>
+  );
+  const header = <VesselCardHeader vessel={vessel} snapshot={snapshot} headerAction={closeAction} />;
   const card = (
     <VesselHoverCard
       vessel={vessel}
       snapshot={snapshot}
       detailLevel={mobile ? view : 'full'}
-      headerAction={
-        <Close
-          aria-label='Close vessel actions'
-          className={`${CLOSE_BUTTON_CLASS} ${mobile ? 'min-h-11 min-w-11 -mt-3 -mr-3' : ''}`}
-        >
-          <X className='size-4' />
-        </Close>
-      }
+      showHeader={!mobile}
+      headerAction={closeAction}
     />
   );
   const actions = (
@@ -93,7 +96,7 @@ function VesselActionsContent({ mobile, vessel, missionDrawer, activityDrawer, m
       </div>
     </footer>
   );
-  if (mobile) return <VesselActionsDrawer {...{ vessel, snapshot, card, actions, resolveFinalFocus }} />;
+  if (mobile) return <VesselActionsDrawer {...{ vessel, snapshot, header, card, actions, resolveFinalFocus }} />;
   return (
     <Popover.Positioner
       side='right'

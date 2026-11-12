@@ -18,7 +18,9 @@ export function MissionOperations({
   vessel,
   snapshot,
   terminalFocus,
+  compact = false,
 }: {
+  compact?: boolean;
   vessel: Vessel;
   snapshot: VesselFrame;
   terminalFocus?: RefObject<HTMLElement | null>;
@@ -28,7 +30,7 @@ export function MissionOperations({
   const abortButton = useRef<HTMLButtonElement | null>(null);
   return (
     <AlertDialog.Root>
-      <div className='flex flex-col gap-2'>
+      <div className={compact ? 'grid grid-cols-[1.5fr_1fr] gap-2 [&>button]:min-h-11' : 'flex flex-col gap-2'}>
         <Button
           aria-label={snapshot.playing ? 'Pause mission' : 'Resume mission'}
           onClick={() =>

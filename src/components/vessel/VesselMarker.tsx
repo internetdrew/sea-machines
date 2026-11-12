@@ -1,5 +1,5 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
-import type { RefObject } from 'react';
+import type { Ref } from 'react';
 import type { Marker } from 'maplibre-gl';
 import { Drawer } from '@base-ui/react/drawer';
 import { Popover } from '@base-ui/react/popover';
@@ -14,8 +14,8 @@ import { VesselActionsPopover } from './VesselActionsPopover';
 import type { VesselActionsProps } from './VesselActionsPopover';
 
 type Props = Omit<VesselActionsProps, 'markerButton' | 'onOpenDrawer' | 'resolveFinalFocus'> & {
-  marker: RefObject<Marker | null>;
-  missionMarker: RefObject<Marker | null>;
+  marker: Ref<Marker>;
+  missionMarker: Ref<Marker>;
 };
 
 const mobileQuery = '(max-width: 639px)';
